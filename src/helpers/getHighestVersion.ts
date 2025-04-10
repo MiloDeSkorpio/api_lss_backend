@@ -3,6 +3,7 @@ import { InferAttributes, Model, ModelStatic, WhereOptions } from 'sequelize'
 export async function getHighestVersion<T extends Model>(
   model: ModelStatic<T>,
   versionField: keyof InferAttributes<T> = 'VERSION' as keyof InferAttributes<T>,
+  statusField: keyof InferAttributes<T> = 'ESTADO' as keyof InferAttributes<T>,
 ): Promise<T[]> {
   try {
     // 1. Verificar si la tabla existe
@@ -23,11 +24,12 @@ export async function getHighestVersion<T extends Model>(
     // 3. Buscar registros con esa versión
     const result = await model.findAll({
       where: {
-        [versionField]: maxVersion
+        [versionField]: maxVersion,
+        [statusField]: 'ACTIVO'
       } as WhereOptions<InferAttributes<T>>,
       raw: true 
     })
-
+    
     return result
 
   } catch (error) {
