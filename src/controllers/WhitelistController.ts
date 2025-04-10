@@ -74,7 +74,8 @@ export class WhitelistController {
                     - Nuevos: ${result.stats.altas}
                     - Bajas: ${result.stats.bajas}
                     - Cambios: ${result.stats.cambios}
-                    - Duplicados detectados: ${result.stats.duplicados}
+                    - Duplicados en altas detectados: ${result.stats.duplicados}
+
                 `)
                 
             } catch (error) {
