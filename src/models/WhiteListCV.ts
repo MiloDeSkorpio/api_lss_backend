@@ -13,14 +13,14 @@ interface WhiteListCVAttributes {
 }
 
 class WhiteListCV extends Model<WhiteListCVAttributes> implements WhiteListCVAttributes {
-  public SERIAL_DEC!: number
-  public SERIAL_HEX!: string
-  public CONFIG!: string
-  public OPERATOR!: string
-  public LOCATION_ID!: string
-  public ESTACION!: string
-  public VERSION!: string
-  public ESTADO!: string
+  declare SERIAL_DEC: number
+  declare SERIAL_HEX: string
+  declare CONFIG: string
+  declare OPERATOR: string
+  declare LOCATION_ID: string
+  declare ESTACION: string
+  declare VERSION: string
+  declare ESTADO: string
 }
 
 WhiteListCV.init(
@@ -28,7 +28,7 @@ WhiteListCV.init(
     SERIAL_DEC: {
       type: DataTypes.BIGINT, 
       allowNull: false,
-      primaryKey: true // clave primaria
+      primaryKey: true
     },
     SERIAL_HEX: {
       type: DataTypes.STRING, 
@@ -53,12 +53,13 @@ WhiteListCV.init(
     VERSION: {
       type: DataTypes.INTEGER, 
       allowNull: false, 
-      primaryKey: true // clave primaria
+      primaryKey: true
     },
     ESTADO: {
       type: DataTypes.STRING, 
       allowNull: false, 
-      defaultValue: 'ACTIVO'
+      defaultValue: 'ACTIVO',
+      primaryKey: true
     }
   },
   {
