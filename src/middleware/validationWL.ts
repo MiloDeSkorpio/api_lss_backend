@@ -15,11 +15,11 @@ interface ValidationError {
 export const processFileGroup = async (files: Express.Multer.File[]) => {
   const validData: any[] = []
   const allErrors: ValidationError[] = []
-  
+
   for (const file of files) {
     try {
       const fileData = await processSingleFile(file)
-      
+
       validData.push(...fileData)
     } catch (error) {
       allErrors.push({
@@ -110,14 +110,14 @@ const normalizeText = (text: string): string => {
 function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationError[]) {
   // Validar campos vacíos/nulos
   const nullFields = Object.entries(row)
-  .filter(([fieldName, value]) => {
-    // Ignorar el campo 'ESTACION'
-    if (fieldName === 'ESTACION') return false
-    // Verificar si el valor es nulo, indefinido o una cadena vacía
-    return value === null || value === undefined || value === ''
-  })
-  .map(([fieldName]) => fieldName)
-  
+    .filter(([fieldName, value]) => {
+      // Ignorar el campo 'ESTACION'
+      if (fieldName === 'ESTACION') return false
+      // Verificar si el valor es nulo, indefinido o una cadena vacía
+      return value === null || value === undefined || value === ''
+    })
+    .map(([fieldName]) => fieldName)
+
   if (nullFields.length > 0) {
     throw new Error(
       `Campos vacíos/nulos: en ${nullFields.join(', ')}`
@@ -133,22 +133,29 @@ function validateRow(row: any, lineNumber: number, validData: any[], errors: Val
     )
   }
   const typeSAMAvalilable = ['CL']
-  let typeSAM  = row.CONFIG
+  let typeSAM = row.CONFIG
 
-  if( !typeSAMAvalilable.includes(typeSAM)) {
+  if (!typeSAMAvalilable.includes(typeSAM)) {
     throw new Error(
       `El Tipo de SAM: ${typeSAM}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable[0]} para esta lista.`
     )
   }
-  const providerCodes =  ['01','02','03','04','05','06','07','14','15','32','3C','46','5A','64','96','C8','C9','C4','CB','CC']
+  const providerCodes = ['01', '02', '03', '04', '05', '06', '07', '14', '15', '32', '3C', '46', '5A', '64', '96', 'C8', 'C9', 'C4', 'CB', 'CC']
   // validar tipo de sam disponible
   const providerCode = row.OPERATOR
-  if(!providerCodes.includes(providerCode)) {
+  if (!providerCodes.includes(providerCode)) {
     throw new Error(
       `El Provider Code ${providerCode} no esta en el catalogo de operadores de la red de transporte`
     )
   }
 
+  // Validar longitud maxima de location_id
+  const locationID = row.LOCATION_ID
+  if (locationID.length > 6) {
+    throw new Error(
+      `La longitud de LOCATION_ID: ${locationID} excede a 6`
+    )
+  }
 
 
   // Si pasa todas las validaciones, agregar a datos válidos
