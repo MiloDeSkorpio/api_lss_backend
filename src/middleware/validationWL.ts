@@ -156,7 +156,10 @@ function validateRow(row: any, lineNumber: number, validData: any[], errors: Val
       `La longitud de LOCATION_ID: ${locationID} excede a 6`
     )
   }
-
+  // normalizar textos
+  if (row.ESTACION) {
+    row.ESTACION = normalizeText(row.ESTACION)
+  }
 
   // Si pasa todas las validaciones, agregar a datos válidos
   validData.push({
