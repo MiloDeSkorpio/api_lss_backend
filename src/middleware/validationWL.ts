@@ -3,7 +3,6 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import { sonEquivalentesNum } from '../helpers/compareHexToDec'
 import { toInt } from 'validator'
-import { Console } from 'console'
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
 
@@ -16,10 +15,11 @@ interface ValidationError {
 export const processFileGroup = async (files: Express.Multer.File[]) => {
   const validData: any[] = []
   const allErrors: ValidationError[] = []
-  console.log(allErrors)
+  
   for (const file of files) {
     try {
       const fileData = await processSingleFile(file)
+      
       validData.push(...fileData)
     } catch (error) {
       allErrors.push({
@@ -31,8 +31,8 @@ export const processFileGroup = async (files: Express.Multer.File[]) => {
 
   if (allErrors.length > 0) {
     throw new Error(
-      'Errores encontrados durante la validación:\n' +
-      allErrors.map(e => `- Línea ${e.line}: ${e.message}`).join('\n')
+      'Errores encontrados durante la validación:' +
+      allErrors.map(e => `- Línea ${e.line}: ${e.message}`).join('')
     )
   }
 
@@ -41,6 +41,7 @@ export const processFileGroup = async (files: Express.Multer.File[]) => {
 
 async function processSingleFile(file: Express.Multer.File): Promise<any[]> {
   return new Promise((resolve, reject) => {
+    let lineNumber = 0
     const fileErrors: ValidationError[] = []
     const fileValidData: any[] = []
 
@@ -50,12 +51,13 @@ async function processSingleFile(file: Express.Multer.File): Promise<any[]> {
       .on('headers', (headers: string[]) => {
         validateHeaders(headers)
       })
-      .on('data', (row, lineNumber) => {
+      .on('data', (row) => {
+        lineNumber++
         try {
           validateRow(row, lineNumber, fileValidData, fileErrors)
         } catch (error) {
           fileErrors.push({
-            line: lineNumber + 1,
+            line: lineNumber,
             message: error.message,
             rawData: row
           })
@@ -65,8 +67,8 @@ async function processSingleFile(file: Express.Multer.File): Promise<any[]> {
         fs.unlinkSync(file.path)
         if (fileErrors.length > 0) {
           reject(new Error(
-            `Archivo ${file.originalname} tiene errores:\n` +
-            fileErrors.map(e => `- Línea ${e.line}: ${e.message}`).join('\n')
+            `Archivo ${file.originalname} tiene errores:` +
+            fileErrors.map(e => `- Línea ${e.line}: ${e.message}`).join('')
           ))
         } else {
           resolve(fileValidData)
@@ -98,15 +100,27 @@ function validateHeaders(headers: string[]) {
   }
 }
 
+const normalizeText = (text: string): string => {
+  return text
+    .normalize("NFD") // Separa caracteres y acentos (ej: "é" → "e´")
+    .replace(/[\u0300-\u036f]/g, "") // Elimina acentos
+    .toUpperCase() // Convierte a mayúsculas
+}
+
 function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationError[]) {
   // Validar campos vacíos/nulos
   const nullFields = Object.entries(row)
-    .filter(([_, value]) => value === null || value === undefined || value === '')
-    .map(([fieldName]) => fieldName)
-
+  .filter(([fieldName, value]) => {
+    // Ignorar el campo 'ESTACION'
+    if (fieldName === 'ESTACION') return false
+    // Verificar si el valor es nulo, indefinido o una cadena vacía
+    return value === null || value === undefined || value === ''
+  })
+  .map(([fieldName]) => fieldName)
+  
   if (nullFields.length > 0) {
     throw new Error(
-      `Campos vacíos/nulos: ${nullFields.join(', ')}`
+      `Campos vacíos/nulos: en ${nullFields.join(', ')}`
     )
   }
 
@@ -118,7 +132,16 @@ function validateRow(row: any, lineNumber: number, validData: any[], errors: Val
       `Hex esperado: ${serialDec.toString(16).toUpperCase()}`
     )
   }
-  
+  const typeSAMAvalilable = ['CL']
+  let typeSAM  = row.CONFIG
+
+  if( !typeSAMAvalilable.includes(typeSAM)) {
+    throw new Error(
+      `El Tipo de SAM: ${typeSAM}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable[0]} para esta lista.`
+    )
+  }
+
+
   // Si pasa todas las validaciones, agregar a datos válidos
   validData.push({
     ...row,
