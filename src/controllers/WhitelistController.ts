@@ -68,15 +68,16 @@ export class WhitelistController {
                     bajasData,
                     cambiosData
                 )
-                
+                console.log(currentVersionRecords.length + altasData.length)
                 console.log(`
                     Versión ${result.newVersion} creada:
                     - Nuevos: ${result.stats.altas}
                     - Bajas: ${result.stats.bajas}
                     - Cambios: ${result.stats.cambios}
                     - Duplicados en altas detectados: ${result.stats.duplicados}
-
-                `)
+                    `)
+                    // - Duplicados en bajas detectados: ${result.stats.duplicados}
+                    // - Duplicados en cambios detectados: ${result.stats.duplicados}
                 
             } catch (error) {
                 console.error("Error en procesamiento en segundo plano:", error.message)
