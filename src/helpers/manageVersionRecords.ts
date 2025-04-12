@@ -1,18 +1,28 @@
 import { InferAttributes, Model, ModelStatic, WhereOptions } from "sequelize"
 
-// 1. Función para verificar duplicados
 function checkDuplicates(currentRecords: any[], newRecords: any[], keyField = 'SERIAL_DEC') {
+  // Paso 1: Identificar duplicados
   const existingKeys = new Set(currentRecords.map(record => record[keyField]))
   const duplicates: any[] = []
+
+  // Paso 2: Filtrar duplicados
   const uniqueNewRecords = newRecords.filter(record => {
     const isDuplicate = existingKeys.has(record[keyField])
     if (isDuplicate) duplicates.push(record)
     return !isDuplicate
   })
-  return { uniqueNewRecords, duplicates }
+  
+  // Paso 3: Combinar registros únicos con los existentes
+  const combinedRecords = [...currentRecords, ...uniqueNewRecords]
+
+  // Paso 4: Eliminar duplicados en la combinación (si es necesario)
+  const finalRecords = Array.from(new Set(combinedRecords.map(record => record[keyField])))
+    .map(key => combinedRecords.find(record => record[keyField] === key))
+  
+  return { finalRecords, duplicates }
 }
 
-// 2. Función principal de procesamiento
+// Función principal de procesamiento
 export async function processVersionUpdate<T extends Model>(
   currentVersionRecords: any[],
   model: ModelStatic<T>,
@@ -22,31 +32,34 @@ export async function processVersionUpdate<T extends Model>(
 ) {
   const currentVersion = currentVersionRecords.length > 0
     ? currentVersionRecords[0].VERSION
-    : 0;
+    : 0
   const newVersion = currentVersion + 1
 
   // Verificación de duplicados en altas
-  const { uniqueNewRecords, duplicates } = checkDuplicates(currentVersionRecords, altasData)
+  const { finalRecords, duplicates } = checkDuplicates(currentVersionRecords, altasData)
 
   // Preparar transacción
   const transaction = await model.sequelize.transaction()
-
+  
   try {
-    // 1. Procesar bajas (eliminación lógica)
+    // Procesar bajas (eliminación lógica)
     if (bajasData.length > 0) {
+      const serialesBajas = bajasData.map(item => item.SERIAL_DEC);
+    
       await model.update(
         { ESTADO: 'INACTIVO', VERSION: newVersion },
         {
           where: {
-            SERIAL_DEC: bajasData.map(item => item.SERIAL_DEC),
+            SERIAL_DEC: serialesBajas,
+            ESTADO: 'ACTIVO', // Solo actualizamos los ACTIVOS
             VERSION: currentVersion
           } as WhereOptions<InferAttributes<T>>,
           transaction
         }
-      )
+      );
     }
 
-    // 2. Procesar cambios
+    // Procesar cambios
     if (cambiosData.length > 0) {
       await Promise.all(
         cambiosData.map(item =>
@@ -63,17 +76,17 @@ export async function processVersionUpdate<T extends Model>(
         )
       )
     }
-
-    // 3. Procesar altas (solo registros únicos)
-    if (uniqueNewRecords.length > 0) {
+    // Procesar altas (solo registros únicos)
+    if (finalRecords.length > 0) {
       await model.bulkCreate(
-        uniqueNewRecords.map(item => ({
+        finalRecords.map(item => ({
           ...item,
           VERSION: newVersion,
         })),
         { transaction }
       )
     }
+
 
     // Commit de la transacción
     await transaction.commit()
@@ -90,7 +103,7 @@ export async function processVersionUpdate<T extends Model>(
       newRecordsCount: newVersionRecords.length,
       duplicates,
       stats: {
-        altas: uniqueNewRecords.length,
+        altas: finalRecords.length,
         bajas: bajasData.length,
         cambios: cambiosData.length,
         duplicados: duplicates.length
