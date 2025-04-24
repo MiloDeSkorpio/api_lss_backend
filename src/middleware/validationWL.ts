@@ -3,8 +3,10 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import { sonEquivalentesNum } from '../helpers/compareHexToDec'
 import { toInt } from 'validator'
+import { validateHeaders } from '../helpers/headerVerify'
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
+const PROVIDER_CODES = ['01','02','03','04','05','06','07','15', '32', '3C', '46', '5A', '64']
 
 interface ValidationError {
   line: number
@@ -49,12 +51,12 @@ async function processSingleFile(file: Express.Multer.File): Promise<any[]> {
       .pipe(stripBomStream())
       .pipe(csv())
       .on('headers', (headers: string[]) => {
-        validateHeaders(headers)
+        validateHeaders(headers,REQUIRED_HEADERS)
       })
       .on('data', (row) => {
         lineNumber++
         try {
-          validateRow(row, lineNumber, fileValidData, fileErrors)
+          validateRow(row, lineNumber, fileValidData, fileErrors, file.filename)
         } catch (error) {
           fileErrors.push({
             line: lineNumber,
@@ -82,24 +84,6 @@ async function processSingleFile(file: Express.Multer.File): Promise<any[]> {
   })
 }
 
-function validateHeaders(headers: string[]) {
-  if (headers.length !== REQUIRED_HEADERS.length) {
-    throw new Error(
-      `El archivo debe tener ${REQUIRED_HEADERS.length} columnas. Recibidas: ${headers.length}`
-    )
-  }
-
-  const missingHeaders = REQUIRED_HEADERS.filter(
-    reqHeader => !headers.includes(reqHeader)
-  )
-
-  if (missingHeaders.length > 0) {
-    throw new Error(
-      `Headers faltantes o incorrectos: ${missingHeaders.join(', ')}`
-    )
-  }
-}
-
 const normalizeText = (text: string): string => {
   return text
     .normalize("NFD") // Separa caracteres y acentos (ej: "é" → "e´")
@@ -107,7 +91,7 @@ const normalizeText = (text: string): string => {
     .toUpperCase() // Convierte a mayúsculas
 }
 
-function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationError[]) {
+function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationError[], fileName: string) {
   // Validar campos vacíos/nulos
   const nullFields = Object.entries(row)
     .filter(([fieldName, value]) => {
@@ -123,7 +107,10 @@ function validateRow(row: any, lineNumber: number, validData: any[], errors: Val
       `Campos vacíos/nulos: en ${nullFields.join(', ')}`
     )
   }
+  // Validar la existencia del SAM && Provider Code Dentro del Estimado
+  if (row.SERIAL_HEX) {
 
+  }
   // Validar equivalencia HEX/DEC
   const serialDec = toInt(row.SERIAL_DEC)
   if (!sonEquivalentesNum(serialDec, row.SERIAL_HEX)) {
@@ -132,20 +119,26 @@ function validateRow(row: any, lineNumber: number, validData: any[], errors: Val
       `Hex esperado: ${serialDec.toString(16).toUpperCase()}`
     )
   }
-  const typeSAMAvalilable = ['CL']
-  let typeSAM = row.CONFIG
 
-  if (!typeSAMAvalilable.includes(typeSAM)) {
-    throw new Error(
-      `El Tipo de SAM: ${typeSAM}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable[0]} para esta lista.`
-    )
+  if (fileName.includes('_cv_')) {
+    const typeSAMAvalilable = ['CV','UCV+']
+    if (!typeSAMAvalilable.includes(row.CONFIG)) {
+      throw new Error(
+        `El Tipo de SAM: ${row.CONFIG}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable} para esta lista.`
+      )
+    }
+  } else {
+    const typeSAMAvalilable = ['CP','CL','CPP']
+    if (!typeSAMAvalilable.includes(row.CONFIG)) {
+      throw new Error(
+        `El Tipo de SAM: ${row.CONFIG}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable} para esta lista.`
+      )
+    }
   }
-  const providerCodes = ['01', '02', '03', '04', '05', '06', '07', '14', '15', '32', '3C', '46', '5A', '64', '96', 'C8', 'C9', 'C4', 'CB', 'CC']
-  // validar tipo de sam disponible
-  const providerCode = row.OPERATOR
-  if (!providerCodes.includes(providerCode)) {
+
+  if (!PROVIDER_CODES.includes(row.OPERATOR)) {
     throw new Error(
-      `El Provider Code ${providerCode} no esta en el catalogo de operadores de la red de transporte`
+      `El Provider Code ${row.OPERATOR} no esta en el catalogo de operadores de la red de transporte`
     )
   }
 
