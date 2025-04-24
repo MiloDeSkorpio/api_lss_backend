@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express'
-import { categorizeFilesWL } from '../helpers/orderFilesByEvent'
-import { processFileGroup } from '../middleware/validationWL'
-import { getHighestVersion } from '../helpers/getHighestVersion'
 import WhiteListCV from '../models/WhiteListCV'
-import { processVersionUpdate } from '../helpers/manageVersionRecords'
+import { categorizeAllFiles, processFileGroup } from '../utils/files'
+import { getHighestVersionRecords, processVersionUpdate } from '../utils/versions'
+
+const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
+const PROVIDER_CODES = ['01','02','03','04','05','06','07','15', '32', '3C', '46', '5A', '64']
 
 // Interfaces
 interface MulterRequest extends Request {
@@ -19,15 +20,15 @@ export class WhitelistController {
     }
 
     const files = req.files
-    const categorizeFiles = categorizeFilesWL(files)
+    const categorizeFiles = categorizeAllFiles(files)
     
     try {
-      const currentVersionRecords = await getHighestVersion(WhiteListCV)
+      const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
     
       let [altasData, bajasData, cambiosData] = await Promise.all([
-        processFileGroup(categorizeFiles.altasFiles),
-        processFileGroup(categorizeFiles.bajasFiles),
-        processFileGroup(categorizeFiles.cambiosFiles)
+        processFileGroup(categorizeFiles.altasFiles,REQUIRED_HEADERS,PROVIDER_CODES ),
+        processFileGroup(categorizeFiles.bajasFiles,REQUIRED_HEADERS,PROVIDER_CODES ),
+        processFileGroup(categorizeFiles.cambiosFiles,REQUIRED_HEADERS,PROVIDER_CODES )
       ])
 
       if (currentVersionRecords.length < 0) {
@@ -74,8 +75,8 @@ export class WhitelistController {
                     - Nuevos: ${result.stats.altas}
                     - Bajas: ${result.stats.bajas}
                     - Cambios: ${result.stats.cambios}
-                    - Duplicados en altas detectados: ${result.stats.duplicados}
                     `)
+                    // - Duplicados en altas detectados: ${result.stats.duplicados}
                     // - Duplicados en bajas detectados: ${result.stats.duplicados}
                     // - Duplicados en cambios detectados: ${result.stats.duplicados}
                 
