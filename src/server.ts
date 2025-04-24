@@ -1,6 +1,7 @@
 import express from 'express'
 import morgan from 'morgan'
 import whiteListRoutes from './routes/whitelistRoutes'
+import samsRoutes from './routes/samsRoutes'
 import { connectDB } from './config/db'
 // Iniciar la conexion a la DB
 connectDB()
@@ -11,5 +12,6 @@ server.use(morgan('dev'))
 server.use(express.json())
 // Rutas
 server.use('/api/whitelist',whiteListRoutes)
+server.use('/api/sams',samsRoutes)
 
 export default server
