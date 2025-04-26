@@ -1,7 +1,8 @@
 import fs from 'fs'
 import csv from 'csv-parser'
 import stripBomStream from "strip-bom-stream"
-import { validateHeaders, validateRow } from "./validation"
+import { validateHeaders } from "./validation"
+import { validateRow } from '../middleware/validationRow';
 
 export interface CategorizedFiles {
   altasFiles: Express.Multer.File[];
@@ -78,7 +79,7 @@ export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HE
   return validData
 }
 
-async function processSingleFile(file: Express.Multer.File,REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]): Promise<any[]> {
+export async function processSingleFile(file: Express.Multer.File,REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]): Promise<any[]> {
   return new Promise((resolve, reject) => {
     let lineNumber = 0
     const fileErrors: ValidationError[] = []
