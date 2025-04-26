@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { WhitelistController } from "../controllers/WhitelistController"
-import { uploadCSV } from "../middleware/uploadFiles";
+import { uploadCSVs } from "../middleware/uploadFiles";
 
 const router = Router()
 
@@ -8,7 +8,7 @@ const router = Router()
 //   WhitelistController.getLastVersion
 // )
 router.post('/new-version',
-  uploadCSV,
+  uploadCSVs,
   WhitelistController.newVersionCV
 )
 
