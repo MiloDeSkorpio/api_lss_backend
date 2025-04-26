@@ -50,4 +50,5 @@ const upload = multer({
   },
 })
 
-export const uploadCSV = upload.array('csvFiles')
+export const uploadCSVs = upload.array('csvFiles')
+export const uploadCSV = upload.single('csvFile')
