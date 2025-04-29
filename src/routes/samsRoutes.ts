@@ -6,7 +6,7 @@ const router = Router()
 
 router.post('/new-version',
   uploadCSV,
-  SamsController.newVersionInventory
+  SamsController.createSamsRecordController
 )
 
 export default router
