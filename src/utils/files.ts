@@ -1,8 +1,9 @@
 import fs from 'fs'
 import csv from 'csv-parser'
 import stripBomStream from "strip-bom-stream"
-import { validateHeaders } from "./validation"
+import { getAllValidSams, validateHeaders } from "./validation"
 import { validateRow } from '../middleware/validationRow';
+import SamsSitp from '../models/SamsSitp';
 
 export interface CategorizedFiles {
   altasFiles: Express.Multer.File[];
@@ -80,11 +81,12 @@ export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HE
 }
 
 export async function processSingleFile(file: Express.Multer.File,REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]): Promise<any[]> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     let lineNumber = 0
     const fileErrors: ValidationError[] = []
     const fileValidData: any[] = []
-
+    const samsValid = await getAllValidSams(SamsSitp)
+    
     fs.createReadStream(file.path)
       .pipe(stripBomStream())
       .pipe(csv())
@@ -94,7 +96,7 @@ export async function processSingleFile(file: Express.Multer.File,REQUIRED_HEADE
       .on('data', (row) => {
         lineNumber++
         try {
-          validateRow(row, lineNumber, fileValidData, fileErrors, file.filename,PROVIDER_CODES)
+          validateRow(row, lineNumber, fileValidData, fileErrors, file.filename,PROVIDER_CODES,samsValid)
         } catch (error) {
           fileErrors.push({
             line: lineNumber,
@@ -116,7 +118,6 @@ export async function processSingleFile(file: Express.Multer.File,REQUIRED_HEADE
       })
       .on('error', (error) => {
         fs.unlinkSync(file.path)
-        // console.log(error.message)
         reject(error.message)
       })
   })
