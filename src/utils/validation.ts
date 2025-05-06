@@ -1,45 +1,69 @@
-
-import { toInt } from "validator";
-import { ValidationError } from "./files";
+import { createHash } from "crypto"
+import { toInt } from "validator"
 
 export function sonEquivalentesNum(dec: number, hex: string): boolean {
-  const hexAsDec = parseInt(hex, 16);
-  if (isNaN(hexAsDec)) throw new Error(`Hex inválido: ${hex}`);
-  return hexAsDec === dec;
+  const hexAsDec = parseInt(hex, 16)
+  if (isNaN(hexAsDec)) throw new Error(`Hex inválido: ${hex}`)
+  return hexAsDec === dec
 }
 
 export function eliminarRegistros<T extends { SERIAL_DEC: string }>(
   original: T[],
   ...arraysAEliminar: T[][]
 ): T[] {
-  // console.log(itemAEliminar)
-  return original.filter(item =>
+  return original.filter(row =>
     !arraysAEliminar.some(array =>
-      array.some(itemAEliminar => item.SERIAL_DEC === itemAEliminar.SERIAL_DEC)
+      array.some(rowAEliminar => row.SERIAL_DEC === rowAEliminar.SERIAL_DEC)
     )
   )
 }
 
-export function checkDuplicates(currentRecords: any[], altasData: any[], keyField = 'SERIAL_DEC') {
-  // Paso 1: Identificar duplicados
-  const existingKeys = new Set(currentRecords.map(record => record[keyField]))
-  const duplicates: any[] = []
+export function validateChangeInRecord(currentRecords: any[],cambiosData: any[]){
+  const sinCambios = []
+  const cambiosValidos = []
+  const camposExcluidos = ['ESTADO', 'VERSION']
 
-  // Paso 2: Filtrar duplicados
-  const uniqueNewRecords = altasData.filter(record => {
-    const isDuplicate = existingKeys.has(record[keyField])
-    if (isDuplicate) duplicates.push(record)
-    return !isDuplicate
+  cambiosData.forEach(registroCambio => {
+    const registroExistente = currentRecords.find(r => r.SERIAL_HEX === registroCambio.SERIAL_HEX)
+  
+    if (!registroExistente) {
+      sinCambios.push(registroCambio)
+      return
+    }
+    // Verificar diferencias en todos los campos (excepto excluidos)
+    const tieneCambios = Object.keys(registroCambio).some(key => {
+      if (camposExcluidos.includes(key)) return false
+      return registroCambio[key] !== registroExistente[key]
+    })
+
+    if (tieneCambios) {
+      cambiosValidos.push(registroCambio)
+    } else {
+      sinCambios.push(registroCambio)
+    }
+  })
+  return {
+    sinCambios,
+    cambiosValidos
+  }
+}
+export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField: string) {
+  
+  const datosDuplicados = []
+  // Filtrar las bajas que están en arrayInvalidData
+  const datosValidos = arrayData.filter(row => {
+    const esDuplicado = arrayCompare.some(invalidRow =>
+      invalidRow[keyField] === row[keyField] // Comparación por ID (ajusta según tu necesidad)
+    )
+
+    if (esDuplicado) {
+      datosDuplicados.push(row)
+      return false
+    }
+    return true
   })
 
-  // Paso 3: Combinar registros únicos con los existentes
-  const combinedRecords = [...currentRecords, ...uniqueNewRecords]
-
-  // Paso 4: Eliminar duplicados en la combinación (si es necesario)
-  const finalRecords = Array.from(new Set(combinedRecords.map(record => record[keyField])))
-    .map(key => combinedRecords.find(record => record[keyField] === key))
-
-  return { finalRecords, duplicates }
+  return { datosValidos, datosDuplicados }
 }
 
 export function validateHeaders(headers: string[], reqHeaders: string[]) {
@@ -60,87 +84,123 @@ export function validateHeaders(headers: string[], reqHeaders: string[]) {
   }
 }
 
-export async function getMaxVersion(model) {
-  try {
-    const maxVersion = await model.max('VERSION' as string)
-    return maxVersion || 0
-  } catch (error) {
-    throw new Error(`Error al consultar la version maxima en ${model.name}: `, error)
-  }
-}
-
 export const normalizeText = (text: string): string => {
   return text
-    .normalize("NFD") 
-    .replace(/[\u0300-\u036f]/g, "") 
-    .toUpperCase() 
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
 }
 
-export function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationError[], fileName: string,PROVIDER_CODES: string[]) {
-
+export function validateRequiredFields(
+  row: Record<string, any>,
+  fieldsToIgnore: string[] = []
+): string[] {
   const nullFields = Object.entries(row)
     .filter(([fieldName, value]) => {
-      // Ignorar el campo 'ESTACION'
-      if (fieldName === 'ESTACION') return false
-      // Verificar si el valor es nulo, indefinido o una cadena vacía
+      // Ignorar campos especificados
+      if (fieldsToIgnore.includes(fieldName)) return false
+
+      // Verificar si el valor es nulo, indefinido o cadena vacía
       return value === null || value === undefined || value === ''
     })
     .map(([fieldName]) => fieldName)
 
   if (nullFields.length > 0) {
-    throw new Error(
-      `Campos vacíos/nulos: en ${nullFields.join(', ')}`
-    )
+    throw new Error(`Campos vacíos/nulos en : ${nullFields.join(', ')}`)
   }
-  // Validar la existencia del SAM && Provider Code Dentro del Estimado
-  if (row.SERIAL_HEX) {
 
-  }
-  // Validar equivalencia HEX/DEC
-  const serialDec = toInt(row.SERIAL_DEC)
-  if (!sonEquivalentesNum(serialDec, row.SERIAL_HEX)) {
+  return nullFields
+}
+
+export function validateHexValuesToDec(
+  SERIAL_DEC: string,
+  SERIAL_HEX: string
+) {
+  const serialDec = toInt(SERIAL_DEC)
+  if (!sonEquivalentesNum(serialDec, SERIAL_HEX)) {
     throw new Error(
-      `SERIAL_DEC (${serialDec}) y SERIAL_HEX (${row.SERIAL_HEX}) no coinciden. ` +
-      `Hex esperado: ${serialDec.toString(16).toUpperCase()}`
+      `SERIAL_DEC (${SERIAL_DEC}) y SERIAL_HEX (${SERIAL_HEX}) no coinciden. ` +
+      `DEC esperado: ${serialDec.toString(16).toUpperCase()}`
     )
   }
+  return serialDec
+}
+export function validateTypeSam(CONFIG: string, fileName: string) {
 
   if (fileName.includes('_cv_')) {
-    const typeSAMAvalilable = ['CV','UCV+']
-    if (!typeSAMAvalilable.includes(row.CONFIG)) {
+    const typeSAMAvalilable = ['CV', 'UCV+']
+    if (!typeSAMAvalilable.includes(CONFIG)) {
       throw new Error(
-        `El Tipo de SAM: ${row.CONFIG}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable} para esta lista.`
+        `El Tipo de SAM: ${CONFIG}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable} para esta lista.`
       )
     }
   } else {
-    const typeSAMAvalilable = ['CP','CL','CPP']
-    if (!typeSAMAvalilable.includes(row.CONFIG)) {
+    const typeSAMAvalilable = ['CP', 'CL', 'CPP']
+    if (!typeSAMAvalilable.includes(CONFIG)) {
       throw new Error(
-        `El Tipo de SAM: ${row.CONFIG}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable} para esta lista.`
+        `El Tipo de SAM: ${CONFIG}, no coincide con el tipo de SAM esperado: ${typeSAMAvalilable} para esta lista.`
       )
     }
   }
+  return true
+}
 
-  if (!PROVIDER_CODES.includes(row.OPERATOR)) {
+export function validateProviderCode(PROVIDER_CODES: string[], OPERATOR: string) {
+  if (!PROVIDER_CODES.includes(OPERATOR)) {
     throw new Error(
-      `El Provider Code ${row.OPERATOR} no esta en el catalogo de operadores de la red de transporte`
+      `El Provider Code ${OPERATOR} no esta en el catalogo de operadores de la red de transporte`
     )
   }
-
-  // Validar longitud maxima de location_id
-  if (row.LOCATION_ID.length > 6) {
+  return true
+}
+export function validateLocationId(LOCATION_ID: string) {
+  if (LOCATION_ID.length > 6) {
     throw new Error(
-      `La longitud de LOCATION_ID: ${row.LOCATION_ID} excede a 6`
+      `La longitud de LOCATION_ID: ${LOCATION_ID} excede a 6`
     )
   }
-  // normalizar textos
-  if (row.ESTACION) {
-    row.ESTACION = normalizeText(row.ESTACION)
-  }
+  return true
+}
 
-  // Si pasa todas las validaciones, agregar a datos válidos
-  validData.push({
-    ...row,
-    SERIAL_DEC: serialDec
+export function genSemoviId(sam_id_hex, sam_id_dec, provider_code) {
+  const inputString = `${sam_id_hex}-${sam_id_dec}-${provider_code}`
+  const hash = createHash('sha256').update(inputString).digest('base64url')
+
+  // Tomamos los primeros 10 caracteres (sin símbolos raros)
+  return `${hash.substring(0, 10)}`
+}
+
+export function isSamValid(samsp_id_hex) {
+  if (samsp_id_hex) {
+
+    const cleanHex = samsp_id_hex.includes('$')
+      ? samsp_id_hex.replace(/\$/g, '')
+      : samsp_id_hex
+
+    if (cleanHex.length !== 8) {
+      console.error(`El SAM no cumple con la longitud requerida (8 caracteres). Longitud actual: ${cleanHex.length}`)
+      return false
+    }
+
+    if (!/^[0-9A-Fa-f]+$/.test(cleanHex)) {
+      console.error('El SAM contiene caracteres no válidos (solo se permiten hexadecimales)')
+      return false
+    }
+
+    return true
+  }
+}
+
+export async function getAllValidSams(model) {
+  const result = await model.findAll({
+    attributes: ['provider_code', 'sam_id_hex'],
+    raw: true
   })
+  return result
+}
+
+export function isSamInInventory(samsValid: any[], PROVIDER_CODES: any[], SERIAL_HEX: string, OPERATOR: string) {
+  return samsValid.some(sam =>
+    sam.sam_id_hex === SERIAL_HEX && PROVIDER_CODES.includes(OPERATOR)
+  )
 }
