@@ -13,6 +13,10 @@ interface MulterRequest extends Request {
 }
 
 export class WhitelistController {
+  static getLastVersionRecords = async (req: Request, res: Response) => {
+    const result = await getHighestVersionRecords(WhiteListCV)
+    res.status(200).json(result)
+  }
 
   static newVersionCV = async (req: MulterRequest, res: Response) => {
 
