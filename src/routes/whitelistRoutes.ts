@@ -4,10 +4,10 @@ import { uploadCSVs } from "../middleware/uploadFiles";
 
 const router = Router()
 
-// router.get('/last-version',
-//   WhitelistController.getLastVersion
-// )
-router.post('/new-version',
+router.get('/last-version-cv',
+  WhitelistController.getLastVersionRecords
+)
+router.post('/new-version-cv',
   uploadCSVs,
   WhitelistController.newVersionCV
 )
