@@ -3,7 +3,6 @@ import WhiteListCV from '../models/WhiteListCV'
 import { categorizeAllFiles, processFileGroup } from '../utils/files'
 import { getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 
-
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
 const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
 
@@ -15,7 +14,14 @@ interface MulterRequest extends Request {
 export class WhitelistController {
   static getLastVersionRecords = async (req: Request, res: Response) => {
     const result = await getHighestVersionRecords(WhiteListCV)
-    res.status(200).json(result)
+    
+    const transformedResult = result.map(record => {
+      return Object.fromEntries(
+        Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
+      )
+    })
+    
+    res.status(200).json(transformedResult)
   }
 
   static newVersionCV = async (req: MulterRequest, res: Response) => {
