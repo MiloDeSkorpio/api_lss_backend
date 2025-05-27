@@ -17,6 +17,12 @@ const REQUIRED_HEADERS = ['sam_id_hex', 'sam_id_dec', 'sam_tipo', 'sam_config', 
 const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
 
 export class SamsController {
+  static getAllRecords = async (req: Request, res: Response) => {
+    const records = await SamsSitp.findAll({
+      raw: true
+    })
+    return res.status(200).json(records)
+  }
 
   static createSamsRecordController = async (req: MulterRequest, res: Response) => {
 
