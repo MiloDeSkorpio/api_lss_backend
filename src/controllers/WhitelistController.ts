@@ -3,6 +3,7 @@ import WhiteListCV from '../models/WhiteListCV'
 import { categorizeAllFiles, processFileGroup } from '../utils/files'
 import { getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
+import { searchByHexID } from '../utils/buscador'
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
 const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
@@ -13,6 +14,14 @@ interface MulterRequest extends Request {
 }
 
 export class WhitelistController {
+
+  static getSamCvByID = async (req: Request, res: Response) => {
+    const { hexId } = req.params 
+    const result = await searchByHexID(hexId,WhiteListCV) 
+    
+    return res.status(200).send(result) 
+  }
+
   static getLastVersionRecordsCV = async (req: Request, res: Response) => {
     const result = await getHighestVersionRecords(WhiteListCV)
     
