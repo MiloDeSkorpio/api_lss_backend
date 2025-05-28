@@ -7,6 +7,9 @@ const router = Router()
 router.get('/last-version-cv',
   WhitelistController.getLastVersionRecordsCV
 )
+router.get('/cv/:hexId',
+  WhitelistController.getSamCvByID
+)
 router.get('/last-version',
   WhitelistController.getLastVersionRecords
 )
