@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { WhitelistController } from "../controllers/WhitelistController"
-import { uploadCSVs } from "../middleware/uploadFiles";
+import { uploadCSV, uploadCSVs } from "../middleware/uploadFiles";
 
 const router = Router()
 
@@ -9,6 +9,10 @@ router.get('/last-version-cv',
 )
 router.get('/cv/:hexId',
   WhitelistController.getSamCvByID
+)
+router.post('/sams-cv',
+  uploadCSV,
+  WhitelistController.getSamsCvByID
 )
 router.get('/last-version',
   WhitelistController.getLastVersionRecords
