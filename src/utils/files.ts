@@ -29,9 +29,8 @@ export const validateFileName = (filename: string): boolean => {
     listablanca: /^listablanca_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
     listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
     inventario: /^inventario_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
-    sams:  /^buscar_sams.csv$/
+    sams:  /^(buscar_sams.*\.csv|.*sams:.*\.csv|.*sams.*\.csv)$/
   }
-
   const hasCV = filename.includes('_cv_')
   const fileType = Object.keys(patterns).find(key => {
     const isCVType = key.includes('_cv')
