@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { WhitelistController } from "../controllers/WhitelistController"
 import { uploadCSV, uploadCSVs } from "../middleware/uploadFiles";
-import { param } from "express-validator";
+import { body, param } from "express-validator";
 
 
 const router = Router()
@@ -29,4 +29,11 @@ router.post('/new-version',
   WhitelistController.newVersion
 )
 
+router.get('/all-versions-cv',
+  WhitelistController.getAllVersionsCV
+)
+router.post('/all-version-records-cv',
+  body('version').notEmpty().withMessage('Es necesaria la Version'),
+  WhitelistController.getAllVersionRecordsCV
+)
 export default router
