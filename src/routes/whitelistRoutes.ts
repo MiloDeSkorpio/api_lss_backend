@@ -29,11 +29,11 @@ router.post('/new-version',
   WhitelistController.newVersion
 )
 
-router.get('/all-versions-cv',
-  WhitelistController.getAllVersionsCV
-)
-router.post('/all-version-records-cv',
-  body('version').notEmpty().withMessage('Es necesaria la Version'),
-  WhitelistController.getAllVersionRecordsCV
+// router.post('/all-version-records-cv',
+//   body('version').notEmpty().withMessage('Es necesaria la Version'),
+//   WhitelistController.getAllVersionRecordsCV
+// )
+router.get('/resume-cv',
+  WhitelistController.getResumeCV
 )
 export default router
