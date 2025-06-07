@@ -1,4 +1,4 @@
-import { InferAttributes, Model, ModelStatic, WhereOptions } from 'sequelize'
+import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions } from 'sequelize'
 import { checkDuplicates, eliminarRegistros, validateChangeInRecord } from "./validation"
 
 export async function processVersionUpdate<T extends Model>(
@@ -156,4 +156,14 @@ export async function getHighestVersionRecords<T extends Model>(
     console.error(`Error in getHighestVersion (table: ${model.tableName}):`, error)
     throw error
   }
+}
+export async function getAllVersions<T extends Model>(model:ModelStatic<T>) {
+      const versions = await model.findAll({
+        attributes: [
+          [Sequelize.fn('DISTINCT', Sequelize.col('VERSION')), 'VERSION']
+        ],
+        order: [['VERSION', 'DESC']],
+        raw: true
+      })
+      return versions
 }
