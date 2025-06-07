@@ -4,10 +4,11 @@ import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
 import { categorizeAllFiles, processFileGroup } from '../utils/files'
-import { getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
+import { getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
-import { Op } from 'sequelize'
+import { Op, Sequelize } from 'sequelize'
+
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
 const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
@@ -113,7 +114,6 @@ export class WhitelistController {
   }
   static getLastVersionRecords = async (req: Request, res: Response) => {
     const result = await getHighestVersionRecords(WhiteList)
-    // console.log(result)
     const transformedResult = result.map(record => {
       return Object.fromEntries(
         Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
@@ -264,5 +264,22 @@ export class WhitelistController {
 
       res.status(500).json({ error: `${error.message}` })
     }
+  }
+
+
+  static getResumeCV = async (req: Request, res: Response) => {
+    
+    const versions = await getAllVersions(WhiteListCV)
+    const currentVersion = await getMaxVersion(WhiteListCV)
+    const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
+    
+    const totalRecords = currentVersionRecords.length
+
+    const response = {
+      totalRecords,
+      currentVersion,
+      versions
+    }
+    res.json(response)
   }
 }
