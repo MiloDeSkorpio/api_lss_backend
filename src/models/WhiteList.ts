@@ -8,7 +8,7 @@ interface WhiteListAttributes {
    OPERATOR: string
    LOCATION_ID: string
    ESTACION: string
-   VERSION: string
+   VERSION: number
    ESTADO: string
 }
 
@@ -19,7 +19,7 @@ class WhiteList extends Model<WhiteListAttributes> implements WhiteListAttribute
   declare OPERATOR: string
   declare LOCATION_ID: string
   declare ESTACION: string
-  declare VERSION: string
+  declare VERSION: number
   declare ESTADO: string
 }
 
