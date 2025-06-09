@@ -167,3 +167,16 @@ export async function getAllVersions<T extends Model>(model:ModelStatic<T>) {
       })
       return versions
 }
+
+export async function getAllRecordsBySelectedVersion<T extends Model>(
+  model: ModelStatic<T>,
+  version: number
+): Promise<T[]> {
+  const records = await model.findAll({
+    where: {
+      VERSION: version
+    } as any, 
+    raw: true
+  })
+  return records
+}
