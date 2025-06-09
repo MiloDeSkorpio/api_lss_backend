@@ -4,10 +4,11 @@ import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
 import { categorizeAllFiles, processFileGroup } from '../utils/files'
-import { getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
+import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
 import { Op, Sequelize } from 'sequelize'
+import { validateChangeInRecord } from '../utils/validation'
 
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
@@ -268,21 +269,28 @@ export class WhitelistController {
 
 
   static getResumeCV = async (req: Request, res: Response) => {
-    
+
     const versions = await getAllVersions(WhiteListCV)
     const currentVersion = await getMaxVersion(WhiteListCV)
     const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
     const totalRecords = currentVersionRecords.length
     const previusVersion = currentVersion - 1
+    const previusVersionRecords = await getAllRecordsBySelectedVersion(WhiteListCV, previusVersion)
     let altasDataV = 0
     let bajasDataV = 0
     let cambiosDataV = 0
-    
-    if( previusVersion < 1 ) {
-      altasDataV = currentVersionRecords.length
 
+    if (previusVersion < 1) {
+      altasDataV = currentVersionRecords.length
     } else {
-      console.log("La version anterior es menor a 1")
+      const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords)
+      const idsPrev = new Set(previusVersionRecords.map(r => r.SERIAL_HEX))
+      const idsCurr = new Set(currentVersionRecords.map(r => r.SERIAL_HEX))
+      const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.SERIAL_HEX))
+      const altas = currentVersionRecords.filter(r => !idsPrev.has(r.SERIAL_HEX))
+      bajasDataV = bajas.length
+      altasDataV = altas.length
+      cambiosDataV = cambiosValidos.length
     }
 
     const response = {
