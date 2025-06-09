@@ -272,13 +272,26 @@ export class WhitelistController {
     const versions = await getAllVersions(WhiteListCV)
     const currentVersion = await getMaxVersion(WhiteListCV)
     const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
-    
     const totalRecords = currentVersionRecords.length
+    const previusVersion = currentVersion - 1
+    let altasDataV = 0
+    let bajasDataV = 0
+    let cambiosDataV = 0
+    
+    if( previusVersion < 1 ) {
+      altasDataV = currentVersionRecords.length
+
+    } else {
+      console.log("La version anterior es menor a 1")
+    }
 
     const response = {
       totalRecords,
       currentVersion,
-      versions
+      versions,
+      altasDataV,
+      bajasDataV,
+      cambiosDataV
     }
     res.json(response)
   }
