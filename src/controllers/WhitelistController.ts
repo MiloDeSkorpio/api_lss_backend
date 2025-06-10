@@ -269,13 +269,12 @@ export class WhitelistController {
 
 
   static getResumeCV = async (req: Request, res: Response) => {
-
-    const versions = await getAllVersions(WhiteListCV)
-    const currentVersion = await getMaxVersion(WhiteListCV)
-    const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
+    const versions = await getAllVersions(WhiteList)
+    const currentVersion = await getMaxVersion(WhiteList)
+    const currentVersionRecords = await getHighestVersionRecords(WhiteList)
     const totalRecords = currentVersionRecords.length
     const previusVersion = currentVersion - 1
-    const previusVersionRecords = await getAllRecordsBySelectedVersion(WhiteListCV, previusVersion)
+    const previusVersionRecords = await getAllRecordsBySelectedVersion(WhiteList, previusVersion)
     let altasDataV = 0
     let bajasDataV = 0
     let cambiosDataV = 0
