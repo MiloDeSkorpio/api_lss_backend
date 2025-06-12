@@ -2,6 +2,7 @@ import { Router } from "express";
 import { WhitelistController } from "../controllers/WhitelistController"
 import { uploadCSV, uploadCSVs } from "../middleware/uploadFiles";
 import { body, param } from "express-validator";
+import { handleInputErrors } from "../middleware";
 
 
 const router = Router()
@@ -11,6 +12,7 @@ router.get('/last-version-cv',
 )
 router.get('/cv/:hexId',
   param('hexId').notEmpty().withMessage('Hex ID No Valido'),
+  handleInputErrors,
   WhitelistController.getSamCvByID
 )
 router.post('/sams-cv',
@@ -29,10 +31,12 @@ router.post('/new-version',
   WhitelistController.newVersion
 )
 
-// router.post('/all-version-records-cv',
-//   body('version').notEmpty().withMessage('Es necesaria la Version'),
-//   WhitelistController.getAllVersionRecordsCV
-// )
+router.post('/compare-versions',
+  body('currentVersion').notEmpty().withMessage('Es necesaria la Version'),
+  body('oldVersion').notEmpty().withMessage('Es necesaria la Version'),
+  handleInputErrors,
+  WhitelistController.compareVersions
+)
 router.get('/resume-cv',
   WhitelistController.getResumeCV
 )
