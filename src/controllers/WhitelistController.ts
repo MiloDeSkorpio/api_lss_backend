@@ -276,7 +276,7 @@ export class WhitelistController {
     let cambiosDataV = 0
     // Opciones base para las consultas
     const baseOptions: any = {
-      attributes: { exclude: ['SERIAL_DEC', 'CONFIG','VERSION'] }, // Excluir campos automáticos
+      attributes: { exclude: ['ESTADO','VERSION'] }, // Excluir campos automáticos
       raw: true
     }
 
