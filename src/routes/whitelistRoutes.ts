@@ -46,6 +46,12 @@ router.post('/compare-cv-versions',
   handleInputErrors,
   WhitelistController.compareCVVersions
 )
+router.post('/compare-versions',
+  body('currentVersion').notEmpty().withMessage('Es necesaria la Version'),
+  body('oldVersion').notEmpty().withMessage('Es necesaria la Version'),
+  handleInputErrors,
+  WhitelistController.compareVersions
+)
 router.get('/resume-cv',
   WhitelistController.getResumeCV
 )
