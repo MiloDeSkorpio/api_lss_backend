@@ -31,13 +31,21 @@ router.post('/new-version',
   WhitelistController.newVersion
 )
 
-router.post('/compare-versions',
+router.post('/compare-cv-versions',
   body('currentVersion').notEmpty().withMessage('Es necesaria la Version'),
   body('oldVersion').notEmpty().withMessage('Es necesaria la Version'),
   handleInputErrors,
-  WhitelistController.compareVersions
+  WhitelistController.compareCVVersions
 )
 router.get('/resume-cv',
   WhitelistController.getResumeCV
 )
+
+router.post('/restore-version-cv',
+  body('oldVersion').notEmpty().withMessage('Es necesaria la Version'),
+  handleInputErrors,
+  WhitelistController.restoreWhitelistCVVersion
+)
+
+
 export default router
