@@ -403,6 +403,59 @@ export class WhitelistController {
     }
 
   }
+  static compareVersions = async (req: Request, res: Response) => {
+    try {
+      const { currentVersion, oldVersion } = req.body
+      let altasDataV = 0
+      let bajasDataV = 0
+      let cambiosDataV = 0
+      // Opciones base para las consultas
+      const baseOptions: any = {
+        attributes: { exclude: ['ESTADO', 'VERSION'] }, // Excluir campos automáticos
+        raw: true
+      }
+
+      // Obtener ambas versiones en paralelo
+      const [currentData, oldData] = await Promise.all([
+        WhiteList.findAll({
+          ...baseOptions,
+          where: { ...baseOptions.where, VERSION: currentVersion }
+        }),
+        WhiteList.findAll({
+          ...baseOptions,
+          where: { ...baseOptions.where, VERSION: oldVersion }
+        })
+      ])
+
+      // Si no hay datos en alguna versión
+      if (!currentData || !oldData) {
+        return { current: currentData, old: oldData }
+      }
+
+      const { cambiosValidos } = validateChangeInRecord(currentData, oldData)
+      const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
+      const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
+      const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
+      const altas = currentData.filter(r => !idsPrev.has(r.SERIAL_HEX))
+      bajasDataV = bajas.length
+      altasDataV = altas.length
+      cambiosDataV = cambiosValidos.length
+      const response = {
+        currentData: currentData.length,
+        oldData: oldData.length,
+        cambiosRes: cambiosDataV,
+        altasRes: altasDataV,
+        bajasRes: bajasDataV,
+        cambiosData: cambiosValidos,
+        bajasData: bajas,
+        altasData: altas
+      }
+      res.json(response)
+    } catch (error) {
+      console.log(error)
+    }
+
+  }
 
   static getResumeCV = async (req: Request, res: Response) => {
     const versions = await getAllVersions(WhiteListCV)
