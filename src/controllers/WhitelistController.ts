@@ -27,6 +27,13 @@ export class WhitelistController {
 
     return res.status(200).send(result)
   }
+  static getSamByID = async (req: Request, res: Response) => {
+    const { hexId } = req.params
+    const result = await searchByHexID(hexId, WhiteList)
+
+    return res.status(200).send(result)
+  }
+  
   static getSamsCvByID = async (req: MulterRequest, res: Response) => {
     const resultados: any[] = []
 
