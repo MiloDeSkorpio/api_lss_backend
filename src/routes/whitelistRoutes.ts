@@ -15,6 +15,11 @@ router.get('/cv/:hexId',
   handleInputErrors,
   WhitelistController.getSamCvByID
 )
+router.get('/first/:hexId',
+  param('hexId').notEmpty().withMessage('Hex ID No Valido'),
+  handleInputErrors,
+  WhitelistController.getSamByID
+)
 router.post('/sams-cv',
   uploadCSV,
   WhitelistController.getSamsCvByID
