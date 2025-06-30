@@ -24,6 +24,10 @@ router.post('/sams-cv',
   uploadCSV,
   WhitelistController.getSamsCvByID
 )
+router.post('/sams-wl',
+  uploadCSV,
+  WhitelistController.getSamsByID
+)
 router.get('/last-version',
   WhitelistController.getLastVersionRecords
 )
