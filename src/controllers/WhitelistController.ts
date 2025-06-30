@@ -438,6 +438,40 @@ export class WhitelistController {
     }
     res.json(response)
   }
+  static getResume = async (req: Request, res: Response) => {
+    const versions = await getAllVersions(WhiteList)
+    const currentVersion = await getMaxVersion(WhiteList)
+    const currentVersionRecords = await getHighestVersionRecords(WhiteList)
+    const totalRecords = currentVersionRecords.length
+    const previusVersion = currentVersion - 1
+    const previusVersionRecords = await getAllRecordsBySelectedVersion(WhiteList, previusVersion)
+    let altasDataV = 0
+    let bajasDataV = 0
+    let cambiosDataV = 0
+
+    if (previusVersion < 1) {
+      altasDataV = currentVersionRecords.length
+    } else {
+      const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords)
+      const idsPrev = new Set(previusVersionRecords.map(r => r.SERIAL_HEX))
+      const idsCurr = new Set(currentVersionRecords.map(r => r.SERIAL_HEX))
+      const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.SERIAL_HEX))
+      const altas = currentVersionRecords.filter(r => !idsPrev.has(r.SERIAL_HEX))
+      bajasDataV = bajas.length
+      altasDataV = altas.length
+      cambiosDataV = cambiosValidos.length
+    }
+
+    const response = {
+      totalRecords,
+      currentVersion,
+      versions,
+      altasDataV,
+      bajasDataV,
+      cambiosDataV
+    }
+    res.json(response)
+  }
 static restoreWhitelistCVVersion = async (req: Request, res: Response) => {
   try {
     const { oldVersion } = req.body
