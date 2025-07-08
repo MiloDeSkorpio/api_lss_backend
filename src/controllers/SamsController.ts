@@ -22,6 +22,12 @@ const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3
 
 export class SamsController {
   static getAllRecords = async (req: Request, res: Response) => {
+    const tableExists = await SamsSitp.sequelize.getQueryInterface().tableExists(SamsSitp.tableName)
+      
+      if (!tableExists) {
+        await SamsSitp.sync()
+        return []
+      }
     const records = await SamsSitp.findAll({
       raw: true
     })
