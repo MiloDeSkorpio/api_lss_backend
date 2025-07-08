@@ -13,4 +13,8 @@ router.post('/new-version',
   SamsController.createSamsRecordController
 )
 
+router.post('/find-by-file',
+  uploadCSV,
+  SamsController.getSamsByFile
+)
 export default router
