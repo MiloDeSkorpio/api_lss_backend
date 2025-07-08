@@ -1,6 +1,10 @@
+import fs from 'fs'
+import csv from 'csv-parser'
 import type { Request, Response } from 'express'
 import {  processSingleFile } from '../utils/files'
 import SamsSitp from '../models/SamsSitp'
+import { Op } from 'sequelize'
+import stripBomStream from 'strip-bom-stream'
 
 // Interfaces
 interface MulterRequest extends Request {
@@ -51,4 +55,79 @@ export class SamsController {
       res.status(500).json({ error: `${error}` })
     }
   }
+    static getSamsByFile = async (req: MulterRequest, res: Response) => {
+      const resultados: any[] = []
+  
+      try {
+        // Validar que el archivo existe
+        if (!req.file || !req.file.path) {
+          throw new Error('No se proporcionó archivo o la ruta es inválida')
+        }
+  
+        const batchSize = 100
+        let currentBatch = []
+  
+        const processBatch = async (batch) => {
+          const serials = batch.map(row => row.serial_hex)
+  
+          const foundRecords = await SamsSitp.findAll({
+            where: { sam_id_hex: { [Op.in]: serials } },
+            raw: true
+          })
+  
+          const recordsMap = new Map()
+          foundRecords.forEach(record => {
+            recordsMap.set(record.sam_id_hex, record)
+          })
+          // Combinar datos del CSV con los registros encontrados
+          batch.forEach(row => {
+            const matchedRecord = recordsMap.get(row.serial_hex)
+            if (matchedRecord) {
+              resultados.push({
+                ...matchedRecord,      // Todos los campos del registro encontrado
+              })
+            }
+          })
+        }
+        // Procesar el CSV
+        await new Promise((resolve, reject) => {
+          fs.createReadStream(req.file.path)
+            .pipe(stripBomStream())
+            .pipe(csv())
+            .on('data', async (row) => {
+              currentBatch.push(row)
+              if (currentBatch.length >= batchSize) {
+                await processBatch(currentBatch)
+                currentBatch = []
+              }
+  
+            })
+            .on('end', async () => {
+              if (currentBatch.length > 0) {
+                const resultados = await processBatch(currentBatch)
+                resolve(resultados)
+              }
+            })
+            .on('error', (error) => {
+              reject(error)
+            })
+        })
+  
+        res.json(resultados)
+      } catch (error) {
+        console.error('Error en el procesamiento:', error)
+        res.status(500).json({
+          success: false,
+          error: error.message
+        })
+      } finally {
+        // Limpiar: eliminar el archivo temporal si es necesario
+        if (req.file && req.file.path) {
+          fs.unlink(req.file.path, (err) => {
+            if (err) console.error('Error al eliminar archivo temporal:', err)
+          })
+        }
+      }
+  
+    }
 }
