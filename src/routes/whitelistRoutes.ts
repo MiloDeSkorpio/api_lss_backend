@@ -64,6 +64,11 @@ router.post('/restore-version-cv',
   handleInputErrors,
   WhitelistController.restoreWhitelistCVVersion
 )
+router.post('/restore-version',
+  body('oldVersion').notEmpty().withMessage('Es necesaria la Version'),
+  handleInputErrors,
+  WhitelistController.restoreWhitelistVersion
+)
 
 
 export default router
