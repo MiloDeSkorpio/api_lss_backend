@@ -287,8 +287,8 @@ export class WhitelistController {
     const categorizeFiles = categorizeAllFiles(files)
     const keyField = 'SERIAL_DEC'
     try {
-      const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
-      const currentVersion = await getMaxVersion(WhiteListCV)
+      const currentVersionRecords = await getHighestVersionRecords(WhiteList)
+      const currentVersion = await getMaxVersion(WhiteList)
       let [altasData, bajasData, cambiosData] = await Promise.all([
         processFileGroup(categorizeFiles.altasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
         processFileGroup(categorizeFiles.bajasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
@@ -307,7 +307,7 @@ export class WhitelistController {
 
         process.nextTick(async () => {
           try {
-            const result = await WhiteListCV.bulkCreate(
+            const result = await WhiteList.bulkCreate(
               altasData.map(item => ({
                 ...item,
                 VERSION: newVersion
@@ -324,7 +324,7 @@ export class WhitelistController {
           try {
             const result = await processVersionUpdate(
               currentVersionRecords,
-              WhiteListCV,
+              WhiteList,
               altasData,
               bajasData,
               cambiosData,
@@ -432,7 +432,7 @@ export class WhitelistController {
         return { current: currentData, old: oldData }
       }
 
-      const { cambiosValidos } = validateChangeInRecord(currentData, oldData)
+      const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
       const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
       const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
       const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
@@ -553,6 +553,40 @@ static restoreWhitelistCVVersion = async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('Error en restoreWhitelistCVVersion:', error)
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      details: error.message 
+    })
+  }
+}
+static restoreWhitelistVersion = async (req: Request, res: Response) => {
+  try {
+    const { oldVersion } = req.body
+    
+    if (!oldVersion) {
+      return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+    }
+
+    const dataVersion = await WhiteList.findOne({
+      where: { VERSION: oldVersion },
+      raw: true
+    })
+
+    if (!dataVersion) {
+      return res.status(404).json({ error: 'Versión no encontrada' })
+    }
+
+    const deletedCount = await WhiteList.destroy({
+      where: { VERSION: { [Op.gt]: oldVersion } }
+    })
+
+    res.json({ 
+      success: true,
+      message: `Restauración completada. ${deletedCount} registros eliminados.`
+    })
+    
+  } catch (error) {
+    console.error('Error en restoreWhitelistVersion:', error)
     res.status(500).json({ 
       error: 'Error interno del servidor',
       details: error.message 
