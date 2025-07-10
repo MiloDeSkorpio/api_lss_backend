@@ -211,7 +211,7 @@ export class WhitelistController {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No se subieron archivos' })
     }
-
+    
     const files = req.files
     const categorizeFiles = categorizeAllFiles(files)
     const keyField = 'SERIAL_DEC'
