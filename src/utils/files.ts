@@ -2,13 +2,13 @@ import fs from 'fs'
 import csv from 'csv-parser'
 import stripBomStream from "strip-bom-stream"
 import { getAllValidSams, validateHeaders } from "./validation"
-import { validateRow } from '../middleware/validationRow';
-import SamsSitp from '../models/SamsSitp';
+import { validateRow } from '../middleware/validationRow'
+import SamsSitp from '../models/SamsSitp'
 
 export interface CategorizedFiles {
-  altasFiles: Express.Multer.File[];
-  bajasFiles: Express.Multer.File[];
-  cambiosFiles: Express.Multer.File[];
+  altasFiles: Express.Multer.File[]
+  bajasFiles: Express.Multer.File[]
+  cambiosFiles: Express.Multer.File[]
 }
 
 const categorized: CategorizedFiles = {
@@ -23,33 +23,46 @@ export interface ValidationError {
   rawData?: any
 }
 
-export const validateFileName = (filename: string): boolean => {
-  const patterns = {
+export const validateFileName = (filename: string, debug = false): boolean => {
+  try {
+      const patterns = {
     listanegra: /^listanegra_tarjetas_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/,
     listablanca: /^listablanca_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
     listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
     inventario: /^inventario_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
     sams:  /^(buscar_sams.*\.csv|.*sams:.*\.csv|.*sams.*\.csv)$/
   }
-  const hasCV = filename.includes('_cv_')
-  const fileType = Object.keys(patterns).find(key => {
-    const isCVType = key.includes('_cv')
-    return (hasCV && isCVType && filename.includes(key.replace('_cv', ''))) || 
-           (!hasCV && !isCVType && filename.includes(key))
-  })
-  
-  if (!fileType) return false
-  
-  return patterns[fileType as keyof typeof patterns].test(filename)
+    const hasCV = filename.includes('_cv_')
+    
+    const fileType = Object.keys(patterns).find(key => 
+      key.includes('_cv') === hasCV && 
+      filename.includes(hasCV ? key.replace('_cv', '') : key)
+    )
+
+    if (!fileType) {
+      if (debug) console.warn(`Invalid file type: ${filename}`)
+      return false
+    }
+
+    const isValid = patterns[fileType as keyof typeof patterns].test(filename)
+    if (!isValid && debug) {
+      console.warn(`Invalid pattern for ${fileType}: ${filename}`)
+    }
+    return isValid
+
+  } catch (error) {
+    if (debug) console.error(`Validation error: ${filename}`, error)
+    return false
+  }
 }
 
 export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFiles => {
 
   files?.forEach((file) => {
-    if (file.originalname.includes('altas')) categorized.altasFiles.push(file);
-    else if (file.originalname.includes('bajas')) categorized.bajasFiles.push(file);
-    else if (file.originalname.includes('cambios')) categorized.cambiosFiles.push(file);
-  });
+    if (file.originalname.includes('altas')) categorized.altasFiles.push(file)
+    else if (file.originalname.includes('bajas')) categorized.bajasFiles.push(file)
+    else if (file.originalname.includes('cambios')) categorized.cambiosFiles.push(file)
+  })
 
   return categorized
 }
