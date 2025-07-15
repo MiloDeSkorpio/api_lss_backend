@@ -49,18 +49,15 @@ export async function processVersionUpdate<T extends Model>(
       if (cambiosValidos.length > 0) {
         await Promise.all(
           cambiosValidos.map(item =>
-            model.update(
+            model.upsert(
               { ...item, VERSION: newVersion },
               {
-                where: {
-                  SERIAL_DEC: item.SERIAL_DEC,
-                  VERSION: currentVersion
-                },
-                transaction
+                transaction,
+                conflictFields: ['SERIAL_DEC'] // Campo único para determinar si existe
               }
             )
           )
-        )
+        );
       }
 
       if (newRecords.length > currentVersionRecords.length || newRecords.length < currentVersionRecords.length) {
@@ -90,9 +87,9 @@ export async function processVersionUpdate<T extends Model>(
         sinCambios
       }
     } else {
-      return {success: false}
+      return { success: false }
     }
-    
+
   } catch (error) {
     await transaction.rollback()
     console.error('Error en procesamiento:', error)
@@ -157,15 +154,15 @@ export async function getHighestVersionRecords<T extends Model>(
     throw error
   }
 }
-export async function getAllVersions<T extends Model>(model:ModelStatic<T>) {
-      const versions = await model.findAll({
-        attributes: [
-          [Sequelize.fn('DISTINCT', Sequelize.col('VERSION')), 'VERSION']
-        ],
-        order: [['VERSION', 'DESC']],
-        raw: true
-      })
-      return versions
+export async function getAllVersions<T extends Model>(model: ModelStatic<T>) {
+  const versions = await model.findAll({
+    attributes: [
+      [Sequelize.fn('DISTINCT', Sequelize.col('VERSION')), 'VERSION']
+    ],
+    order: [['VERSION', 'DESC']],
+    raw: true
+  })
+  return versions
 }
 
 export async function getAllRecordsBySelectedVersion<T extends Model>(
@@ -175,7 +172,7 @@ export async function getAllRecordsBySelectedVersion<T extends Model>(
   const records = await model.findAll({
     where: {
       VERSION: version
-    } as any, 
+    } as any,
     raw: true
   })
   return records
