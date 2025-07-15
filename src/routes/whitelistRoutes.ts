@@ -2,7 +2,7 @@ import { Router } from "express";
 import { WhitelistController } from "../controllers/WhitelistController"
 import { uploadCSV, uploadCSVs } from "../middleware/uploadFiles";
 import { body, param } from "express-validator";
-import { handleInputErrors } from "../middleware";
+import { handleInputErrors, multerErrorHandler } from "../middleware";
 
 
 const router = Router()
@@ -33,6 +33,7 @@ router.get('/last-version',
 )
 router.post('/new-version-cv',
   uploadCSVs,
+  multerErrorHandler,
   WhitelistController.newVersionCV
 )
 router.post('/new-version',
