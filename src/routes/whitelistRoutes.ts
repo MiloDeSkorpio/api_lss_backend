@@ -33,6 +33,7 @@ router.get('/last-version',
 )
 router.post('/new-version-cv',
   uploadCSVs,
+  handleInputErrors,
   multerErrorHandler,
   WhitelistController.newVersionCV
 )
