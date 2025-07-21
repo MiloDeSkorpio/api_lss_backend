@@ -23,35 +23,23 @@ export interface ValidationError {
   rawData?: any
 }
 
-export const validateFileName = (filename: string, debug = false): boolean => {
+export const validateFileName = (filename: string): boolean => {
   try {
-      const patterns = {
-    listanegra: /^listanegra_tarjetas_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/,
-    listablanca: /^listablanca_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
-    listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
-    inventario: /^inventario_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
-    sams:  /^(buscar_sams.*\.csv|.*sams:.*\.csv|.*sams.*\.csv)$/
-  }
-    const hasCV = filename.includes('_cv_')
-    
-    const fileType = Object.keys(patterns).find(key => 
-      key.includes('_cv') === hasCV && 
-      filename.includes(hasCV ? key.replace('_cv', '') : key)
-    )
-
-    if (!fileType) {
-      if (debug) console.warn(`Invalid file type: ${filename}`)
-      return false
+    const patterns = {
+      listanegra: /^listanegra_tarjetas_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/,
+      listablanca: /^listablanca_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
+      listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
+      inventario: /^inventario_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
+      sams: /^buscar_sams.*\.csv$/
     }
 
-    const isValid = patterns[fileType as keyof typeof patterns].test(filename)
-    if (!isValid && debug) {
-      console.warn(`Invalid pattern for ${fileType}: ${filename}`)
-    }
-    return isValid
+    const fileType = Object.entries(patterns).find(([, regex]) =>
+      regex.test(filename)
+    )?.[0]
 
+    return !!fileType  
   } catch (error) {
-    if (debug) console.error(`Validation error: ${filename}`, error)
+    console.error(`Error al validar nombre de archivo: ${filename}`, error)
     return false
   }
 }
@@ -67,13 +55,13 @@ export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFil
   return categorized
 }
 
-export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[],PROVIDER_CODES: string[]) => {
+export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) => {
   const validData: any[] = []
   const allErrors: ValidationError[] = []
   // let lineNumber = 0
   for (const file of files) {
     try {
-      const fileData = await processSingleFile(file,REQUIRED_HEADERS,PROVIDER_CODES)
+      const fileData = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
       validData.push(...fileData)
     } catch (error) {
       allErrors.push({
@@ -93,23 +81,23 @@ export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HE
   return validData
 }
 
-export async function processSingleFile(file: Express.Multer.File,REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]): Promise<any[]> {
+export async function processSingleFile(file: Express.Multer.File, REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]): Promise<any[]> {
   return new Promise(async (resolve, reject) => {
     let lineNumber = 0
     const fileErrors: ValidationError[] = []
     const fileValidData: any[] = []
     const samsValid = await getAllValidSams(SamsSitp)
-    
+
     fs.createReadStream(file.path)
       .pipe(stripBomStream())
       .pipe(csv())
       .on('headers', (headers: string[]) => {
-        validateHeaders(headers,REQUIRED_HEADERS)
+        validateHeaders(headers, REQUIRED_HEADERS)
       })
       .on('data', (row) => {
         lineNumber++
         try {
-          validateRow(row, lineNumber, fileValidData, fileErrors, file.filename,PROVIDER_CODES,samsValid)
+          validateRow(row, lineNumber, fileValidData, fileErrors, file.filename, PROVIDER_CODES, samsValid)
         } catch (error) {
           fileErrors.push({
             line: lineNumber,
