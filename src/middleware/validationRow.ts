@@ -46,7 +46,11 @@ async function validateListaBlanca(
   if (row.ESTACION) {
     row.ESTACION = normalizeText(row.ESTACION)
   }
-  validateLocationId(row.LOCATION_ID)
+  try {
+    validateLocationId(row.LOCATION_ID)
+  } catch (error) {
+    console.error(error.message)
+  }
   return validData.push({
     ...row,
     SERIAL_DEC: serialDec
