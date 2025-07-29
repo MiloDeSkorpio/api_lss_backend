@@ -3,7 +3,7 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { categorizeAllFiles, processFileGroup } from '../utils/files'
+import { categorizeAllFiles, processFileGroup, processSingleFile } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
@@ -20,7 +20,25 @@ interface MulterRequest extends Request {
 }
 
 export class WhitelistController {
+  static validateWhiteListCV = async (req: MulterRequest, res: Response) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'No se subieron archivos' })
+      }
+      const files = req.files
+      for (const file of files) {
+            const result = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
+            if (result.errors) {
+              res.status(400).json(result.errors)
+            } else {
+              return result.validData
+            }
+        }
+    } catch (error) {
+      console.log(error)
+    }
 
+  }
   static getSamCvByID = async (req: Request, res: Response) => {
     const { hexId } = req.params
     const result = await searchByHexID(hexId, WhiteListCV)
@@ -33,7 +51,6 @@ export class WhitelistController {
 
     return res.status(200).send(result)
   }
-
   static getSamsCvByID = async (req: MulterRequest, res: Response) => {
     const resultados: any[] = []
 
@@ -205,7 +222,6 @@ export class WhitelistController {
 
     res.status(200).json(transformedResult)
   }
-
   static newVersionCV = async (req: MulterRequest, res: Response) => {
 
     if (!req.files || req.files.length === 0) {
@@ -348,8 +364,6 @@ export class WhitelistController {
       res.status(500).json({ error: `${error.message}` })
     }
   }
-
-
   static compareCVVersions = async (req: Request, res: Response) => {
     try {
       const { currentVersion, oldVersion } = req.body
@@ -456,7 +470,6 @@ export class WhitelistController {
     }
 
   }
-
   static getResumeCV = async (req: Request, res: Response) => {
     const versions = await getAllVersions(WhiteListCV)
     const currentVersion = await getMaxVersion(WhiteListCV)
@@ -525,72 +538,72 @@ export class WhitelistController {
     }
     res.json(response)
   }
-static restoreWhitelistCVVersion = async (req: Request, res: Response) => {
-  try {
-    const { oldVersion } = req.body
-    
-    if (!oldVersion) {
-      return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+  static restoreWhitelistCVVersion = async (req: Request, res: Response) => {
+    try {
+      const { oldVersion } = req.body
+      
+      if (!oldVersion) {
+        return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+      }
+
+      const dataVersion = await WhiteListCV.findOne({
+        where: { VERSION: oldVersion },
+        raw: true
+      })
+
+      if (!dataVersion) {
+        return res.status(404).json({ error: 'Versión no encontrada' })
+      }
+
+      const deletedCount = await WhiteListCV.destroy({
+        where: { VERSION: { [Op.gt]: oldVersion } }
+      })
+
+      res.json({ 
+        success: true,
+        message: `Restauración completada. ${deletedCount} registros eliminados.`
+      })
+      
+    } catch (error) {
+      console.error('Error en restoreWhitelistCVVersion:', error)
+      res.status(500).json({ 
+        error: 'Error interno del servidor',
+        details: error.message 
+      })
     }
-
-    const dataVersion = await WhiteListCV.findOne({
-      where: { VERSION: oldVersion },
-      raw: true
-    })
-
-    if (!dataVersion) {
-      return res.status(404).json({ error: 'Versión no encontrada' })
-    }
-
-    const deletedCount = await WhiteListCV.destroy({
-      where: { VERSION: { [Op.gt]: oldVersion } }
-    })
-
-    res.json({ 
-      success: true,
-      message: `Restauración completada. ${deletedCount} registros eliminados.`
-    })
-    
-  } catch (error) {
-    console.error('Error en restoreWhitelistCVVersion:', error)
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      details: error.message 
-    })
   }
-}
-static restoreWhitelistVersion = async (req: Request, res: Response) => {
-  try {
-    const { oldVersion } = req.body
-    
-    if (!oldVersion) {
-      return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+  static restoreWhitelistVersion = async (req: Request, res: Response) => {
+    try {
+      const { oldVersion } = req.body
+      
+      if (!oldVersion) {
+        return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+      }
+
+      const dataVersion = await WhiteList.findOne({
+        where: { VERSION: oldVersion },
+        raw: true
+      })
+
+      if (!dataVersion) {
+        return res.status(404).json({ error: 'Versión no encontrada' })
+      }
+
+      const deletedCount = await WhiteList.destroy({
+        where: { VERSION: { [Op.gt]: oldVersion } }
+      })
+
+      res.json({ 
+        success: true,
+        message: `Restauración completada. ${deletedCount} registros eliminados.`
+      })
+      
+    } catch (error) {
+      console.error('Error en restoreWhitelistVersion:', error)
+      res.status(500).json({ 
+        error: 'Error interno del servidor',
+        details: error.message 
+      })
     }
-
-    const dataVersion = await WhiteList.findOne({
-      where: { VERSION: oldVersion },
-      raw: true
-    })
-
-    if (!dataVersion) {
-      return res.status(404).json({ error: 'Versión no encontrada' })
-    }
-
-    const deletedCount = await WhiteList.destroy({
-      where: { VERSION: { [Op.gt]: oldVersion } }
-    })
-
-    res.json({ 
-      success: true,
-      message: `Restauración completada. ${deletedCount} registros eliminados.`
-    })
-    
-  } catch (error) {
-    console.error('Error en restoreWhitelistVersion:', error)
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      details: error.message 
-    })
   }
-}
 }
