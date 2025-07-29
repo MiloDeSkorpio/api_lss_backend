@@ -7,6 +7,13 @@ import { handleInputErrors, multerErrorHandler } from "../middleware";
 
 const router = Router()
 
+router.post('/validate-cv',
+  uploadCSVs,
+  handleInputErrors,
+  multerErrorHandler,
+  WhitelistController.validateWhiteListCV
+)
+
 router.get('/last-version-cv',
   WhitelistController.getLastVersionRecordsCV
 )
