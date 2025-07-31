@@ -45,47 +45,51 @@ export async function processVersionUpdate<T extends Model>(
           }
         )
       }
-
-      if (cambiosValidos.length > 0) {
-        await Promise.all(
-          cambiosValidos.map(item =>
-            model.upsert(
-              { ...item, VERSION: newVersion },
-              {
-                transaction,
-                conflictFields: ['SERIAL_DEC'] // Campo único para determinar si existe
-              }
+      try {
+        
+        if (cambiosValidos.length > 0) {
+          await Promise.all(
+            cambiosValidos.map(item =>
+              model.upsert(
+                { ...item, VERSION: newVersion },
+                {
+                  transaction,
+                  conflictFields: ['SERIAL_DEC'] // Campo único para determinar si existe
+                }
+              )
             )
+          );
+        }
+        if (newRecords.length > currentVersionRecords.length || newRecords.length < currentVersionRecords.length) {
+          await model.bulkCreate(
+            newRecords.map(item => ({
+              ...item,
+              VERSION: newVersion
+            })),
+            { transaction }
           )
-        );
+        }
+  
+        await transaction.commit()
+  
+        const newVersionRecords = await model.findAll({
+          where: { VERSION: newVersion },
+          raw: true
+        })
+  
+        return {
+          success: true,
+          newVersion,
+          newRecordsCount: newVersionRecords.length,
+          newRecordsVersion: newVersionRecords,
+          altasDuplicadas,
+          bajasInactivas,
+          sinCambios
+        }
+      } catch (error) {
+        console.error(error.message)
       }
 
-      if (newRecords.length > currentVersionRecords.length || newRecords.length < currentVersionRecords.length) {
-        await model.bulkCreate(
-          newRecords.map(item => ({
-            ...item,
-            VERSION: newVersion
-          })),
-          { transaction }
-        )
-      }
-
-      await transaction.commit()
-
-      const newVersionRecords = await model.findAll({
-        where: { VERSION: newVersion },
-        raw: true
-      })
-
-      return {
-        success: true,
-        newVersion,
-        newRecordsCount: newVersionRecords.length,
-        newRecordsVersion: newVersionRecords,
-        altasDuplicadas,
-        bajasInactivas,
-        sinCambios
-      }
     } else {
       return { success: false }
     }
@@ -154,6 +158,7 @@ export async function getHighestVersionRecords<T extends Model>(
     throw error
   }
 }
+
 export async function getAllVersions<T extends Model>(model: ModelStatic<T>) {
   const versions = await model.findAll({
     attributes: [
