@@ -16,11 +16,13 @@ const categorized: CategorizedFiles = {
   bajasFiles: [],
   cambiosFiles: [],
 }
+export interface ValidationErrorItem {
+  message?: string
+}
 
 export interface ValidationError {
-  line: number
-  message: string
-  rawData?: any
+  fileName?: string
+  fileErrors?: ValidationErrorItem[]
 }
 
 export const validateFileName = (filename: string): boolean => {
@@ -37,7 +39,7 @@ export const validateFileName = (filename: string): boolean => {
       regex.test(filename)
     )?.[0]
 
-    return !!fileType  
+    return !!fileType
   } catch (error) {
     console.error(`Error al validar nombre de archivo: ${filename}`, error)
     return false
@@ -56,70 +58,69 @@ export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFil
 }
 
 export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) => {
-  const validData: any[] = []
-  const allErrors: ValidationError[] = []
-  // let lineNumber = 0
+
   for (const file of files) {
-    try {
-      const fileData = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
-      validData.push(...fileData)
-    } catch (error) {
-      allErrors.push({
-        line: error.line,
-        message: `Error procesando archivo ${file.originalname}: ${error.message}`
-      })
+    const result = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
+    if (result.errors.length > 0) {
+      return result.errors
+    } else {
+      return result.validData
     }
   }
-
-  if (allErrors.length > 0) {
-    throw new Error(
-      'Errores encontrados durante la validación:' +
-      allErrors.map(e => `- Línea ${e.line}: ${e.message}`).join('')
-    )
-  }
-
-  return validData
 }
 
-export async function processSingleFile(file: Express.Multer.File, REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]): Promise<any[]> {
+export async function processSingleFile(
+  file: Express.Multer.File,
+  REQUIRED_HEADERS: string[],
+  PROVIDER_CODES: string[]
+): Promise<{ validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
-    let lineNumber = 0
-    const fileErrors: ValidationError[] = []
-    const fileValidData: any[] = []
-    const samsValid = await getAllValidSams(SamsSitp)
+    let lineNumber = 0;
+    const filesErrors: ValidationError[] = [];
+    const errorMessages: ValidationErrorItem[] = [];
+    const fileValidData: any[] = [];
+    const samsValid = await getAllValidSams(SamsSitp);
 
-    fs.createReadStream(file.path)
+    let headersValid = true;
+
+    const stream = fs.createReadStream(file.path)
       .pipe(stripBomStream())
-      .pipe(csv())
+      .pipe(csv());
+
+    stream
       .on('headers', (headers: string[]) => {
-        validateHeaders(headers, REQUIRED_HEADERS)
+        const missing = validateHeaders(headers, REQUIRED_HEADERS);
+        if (missing.length > 0) {
+          headersValid = false;
+          errorMessages.push({
+            message: `Faltan columnas: ${missing.join(', ')}`,
+          });
+        }
       })
       .on('data', (row) => {
-        lineNumber++
-        try {
-          validateRow(row, lineNumber, fileValidData, fileErrors, file.filename, PROVIDER_CODES, samsValid)
-        } catch (error) {
-          fileErrors.push({
-            line: lineNumber,
-            message: error.message,
-            rawData: row
-          })
+        lineNumber++;
+        if (headersValid) {
+          validateRow(
+            row,
+            lineNumber,
+            fileValidData,
+            errorMessages,
+            file.originalname,
+            PROVIDER_CODES,
+            samsValid
+          );
         }
       })
       .on('end', () => {
-        fs.unlinkSync(file.path)
-        if (fileErrors.length > 0) {
-          reject(new Error(
-            `Archivo ${file.originalname} tiene errores:` +
-            fileErrors.map(e => `- Línea ${e.line}: ${e.message}`).join('')
-          ))
-        } else {
-          resolve(fileValidData)
-        }
+        fs.unlinkSync(file.path);
+        resolve({
+          validData: fileValidData,
+          errors: errorMessages
+        });
       })
       .on('error', (error) => {
-        fs.unlinkSync(file.path)
-        reject(error.message)
-      })
-  })
+        fs.unlinkSync(file.path);
+        reject(error);
+      });
+  });
 }
