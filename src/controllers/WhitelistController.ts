@@ -7,8 +7,9 @@ import { categorizeAllFiles, processFileGroup, processSingleFile } from '../util
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
-import { Op, Sequelize } from 'sequelize'
+import { Op } from 'sequelize'
 import { validateChangeInRecord } from '../utils/validation'
+
 
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
@@ -23,22 +24,75 @@ export class WhitelistController {
   static validateWhiteListCV = async (req: MulterRequest, res: Response) => {
     try {
       if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: 'No se subieron archivos' })
+        return res.status(400).json({ error: 'No se subieron archivos' });
       }
-      const files = req.files
-      for (const file of files) {
-            const result = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
-            if (result.errors) {
-              res.status(400).json(result.errors)
-            } else {
-              return result.validData
-            }
-        }
-    } catch (error) {
-      console.log(error)
-    }
 
-  }
+      const files = req.files;
+      const results = [];
+      let hasErrors = false;
+
+      // Procesar todos los archivos en paralelo (o en serie si prefieres)
+      const processingPromises = files.map(async (file) => {
+        try {
+          const { errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES);
+          return { fileName: file.originalname, errors, validData };
+        } catch (error) {
+          return {
+            fileName: file.originalname,
+            errors: error,
+            validData: null
+          };
+        }
+      });
+
+      // Esperar a que todos los archivos se procesen
+      const fileResults = await Promise.all(processingPromises);
+      // Verificar si hay errores en alguno de los archivos
+      hasErrors = fileResults.some(result => result.errors && result.errors.length > 0);
+      if (hasErrors) {
+        fileResults.forEach(result => {
+          if (result.errors.length > 0) {
+            results.push({
+              fileName: result.fileName,
+              fileErrors: result.errors
+            });
+          }
+        });
+      } else {
+        fileResults.forEach(result => {
+          if (result.validData.length > 0) {
+            results.push({
+              fileName: result.fileName,
+              validData: result.validData
+            })
+          }
+        })
+      }
+
+      // Enviar respuesta adecuada
+      if (hasErrors) {
+        const response = {
+          success: !hasErrors,
+          errorsFiles: results,
+        }
+        return res.status(400).json(response);
+      } else {
+        const response = {
+          success: true,
+          validData: results,
+        }
+        return res.status(200).json(response);
+      }
+
+    } catch (error) {
+      console.error('Error en validateWhiteListCV:', error);
+      return res.status(500).json({
+        error: 'Error interno del servidor',
+        details: error.message
+      });
+    }
+  };
+
   static getSamCvByID = async (req: Request, res: Response) => {
     const { hexId } = req.params
     const result = await searchByHexID(hexId, WhiteListCV)
@@ -227,7 +281,7 @@ export class WhitelistController {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No se subieron archivos' })
     }
-    
+
     const files = req.files
     const categorizeFiles = categorizeAllFiles(files)
     const keyField = 'SERIAL_DEC'
@@ -541,7 +595,7 @@ export class WhitelistController {
   static restoreWhitelistCVVersion = async (req: Request, res: Response) => {
     try {
       const { oldVersion } = req.body
-      
+
       if (!oldVersion) {
         return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
       }
@@ -559,23 +613,23 @@ export class WhitelistController {
         where: { VERSION: { [Op.gt]: oldVersion } }
       })
 
-      res.json({ 
+      res.json({
         success: true,
         message: `Restauración completada. ${deletedCount} registros eliminados.`
       })
-      
+
     } catch (error) {
       console.error('Error en restoreWhitelistCVVersion:', error)
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Error interno del servidor',
-        details: error.message 
+        details: error.message
       })
     }
   }
   static restoreWhitelistVersion = async (req: Request, res: Response) => {
     try {
       const { oldVersion } = req.body
-      
+
       if (!oldVersion) {
         return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
       }
@@ -593,16 +647,16 @@ export class WhitelistController {
         where: { VERSION: { [Op.gt]: oldVersion } }
       })
 
-      res.json({ 
+      res.json({
         success: true,
         message: `Restauración completada. ${deletedCount} registros eliminados.`
       })
-      
+
     } catch (error) {
       console.error('Error en restoreWhitelistVersion:', error)
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Error interno del servidor',
-        details: error.message 
+        details: error.message
       })
     }
   }
