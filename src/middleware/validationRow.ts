@@ -1,65 +1,59 @@
-import { ValidationError } from "../utils/files";
+import { ValidationError, ValidationErrorItem } from "../utils/files";
 import { genSemoviId, isSamInInventory, isSamValid, normalizeText, validateHexValuesToDec, validateLocationId, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
 
 let ignoreWl = ['ESTACION']
 let ignoreBl = ['ESTACION']
 let ignoreIn = ['version_parametros', 'lock_index', 'fecha_produccion', 'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros', 'recibido_por', 'documento_soporte1', 'documento_soporte2', 'observaciones']
 
-export function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationError[], fileName: string, PROVIDER_CODES: string[],samsValid: any[]) {
-  try {
-    if (fileName.includes('listablanca')) {
-      return validateListaBlanca(row, errors, fileName, PROVIDER_CODES, validData,samsValid)
-    }
-    else if (fileName.includes('listanegra')) {
+export function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationErrorItem[], fileName: string, PROVIDER_CODES: string[], samsValid: any[]) {
 
-    }
-    else if (fileName.includes('inventario')) {
-      return validateInventorySams(row, errors, fileName, PROVIDER_CODES, validData)
-    }
-    return false
-  } catch (error) {
-    errors.push({
-      line: lineNumber,
-      message: `Error inesperado en la línea ${lineNumber}: ${error instanceof Error ? error.message : String(error)}`,
-    });
-    return false;
+  if (fileName.includes('listablanca')) {
+    return validateListaBlanca(row, errors, PROVIDER_CODES, validData, samsValid, lineNumber)
   }
+  else if (fileName.includes('listanegra')) {
+
+  }
+  else if (fileName.includes('inventario')) {
+    return validateInventorySams(row, errors, fileName, PROVIDER_CODES, validData)
+  }
+  return false
 
 }
 
 
 async function validateListaBlanca(
   row: any,
-  errors: ValidationError[],
-  fileName: string,
+  errors: ValidationErrorItem[],
   PROVIDER_CODES: string[],
   validData: any[],
-  samsValid: any[]
+  samsValid: any[],
+  line: number
 ) {
-  validateRequiredFields(row, ignoreWl)
-  if (!isSamInInventory(samsValid,PROVIDER_CODES,row.SERIAL_HEX, row.OPERATOR)) {
-    throw new Error(`El SAM: ${row.SERIAL_HEX} no se encuentra en la DB`)
-  }
-  const serialDec = validateHexValuesToDec(row.SERIAL_DEC, row.SERIAL_HEX)
-  validateTypeSam(row.CONFIG, fileName)
-  validateProviderCode(PROVIDER_CODES, row.OPERATOR)
-  if (row.ESTACION) {
-    row.ESTACION = normalizeText(row.ESTACION)
-  }
   try {
+    validateRequiredFields(row, ignoreWl)
+    !isSamInInventory(samsValid, PROVIDER_CODES, row.SERIAL_HEX, row.OPERATOR)
+    validateHexValuesToDec(row.SERIAL_DEC, row.SERIAL_HEX)
+    if (row.ESTACION) {
+      row.ESTACION = normalizeText(row.ESTACION)
+    }
+    validateProviderCode(PROVIDER_CODES, row.OPERATOR)
     validateLocationId(row.LOCATION_ID)
   } catch (error) {
-    console.error(error.message)
+    errors.push({
+      message: `Linea: ${line} - ${error.message}`
+    })
   }
-  return validData.push({
-    ...row,
-    SERIAL_DEC: serialDec
-  })
+  if (errors.length === 0) {
+    validData.push({
+      ...row,
+      SERIAL_DEC: row.SERIAL_DEC
+    })
+  }
 }
 
 function validateInventorySams(
   row: any,
-  errors: ValidationError[],
+  errors: ValidationErrorItem[],
   fileName: string,
   PROVIDER_CODES: string[],
   validData: any[]
