@@ -66,22 +66,8 @@ export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField:
   return { datosValidos, datosDuplicados }
 }
 
-export function validateHeaders(headers: string[], reqHeaders: string[]) {
-  if (headers.length !== reqHeaders.length) {
-    throw new Error(
-      `El archivo debe tener ${reqHeaders.length} columnas. Recibidas: ${headers.length}`
-    )
-  }
-
-  const missingHeaders = reqHeaders.filter(
-    reqHeader => !headers.includes(reqHeader)
-  )
-
-  if (missingHeaders.length > 0) {
-    throw new Error(
-      `Headers faltantes o incorrectos: ${missingHeaders.join(', ')}`
-    )
-  }
+export function validateHeaders(headers: string[], required: string[]): string[] {
+  return required.filter(h => !headers.includes(h))
 }
 
 export const normalizeText = (text: string): string => {
