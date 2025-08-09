@@ -6,7 +6,6 @@ export function sonEquivalentesNum(dec: number, hex: string): boolean {
   if (isNaN(hexAsDec)) throw new Error(`Hex inválido: ${hex}`)
   return hexAsDec === dec
 }
-
 export function eliminarRegistros<T extends { SERIAL_DEC: string }>(
   original: T[],
   ...arraysAEliminar: T[][]
@@ -17,15 +16,13 @@ export function eliminarRegistros<T extends { SERIAL_DEC: string }>(
     )
   )
 }
-
-export function validateChangeInRecord(currentRecords: any[],cambiosData: any[]){
+export function  validateChangeInRecord(currentRecords: any[],cambiosData: any[]){
   const sinCambios = []
   const cambiosValidos = []
   const camposExcluidos = ['ESTADO', 'VERSION']
 
   cambiosData.forEach(registroCambio => {
-    const registroExistente = currentRecords.find(r => r.SERIAL_HEX === registroCambio.SERIAL_HEX)
-  
+    const registroExistente = currentRecords.find(r => r.SERIAL_DEC === registroCambio.SERIAL_DEC)
     if (!registroExistente) {
       sinCambios.push(registroCambio)
       return
@@ -65,18 +62,15 @@ export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField:
 
   return { datosValidos, datosDuplicados }
 }
-
 export function validateHeaders(headers: string[], required: string[]): string[] {
   return required.filter(h => !headers.includes(h))
 }
-
 export const normalizeText = (text: string): string => {
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
 }
-
 export function validateRequiredFields(
   row: Record<string, any>,
   fieldsToIgnore: string[] = []
@@ -97,7 +91,6 @@ export function validateRequiredFields(
 
   return nullFields
 }
-
 export function validateHexValuesToDec(
   SERIAL_DEC: string,
   SERIAL_HEX: string
@@ -130,7 +123,6 @@ export function validateTypeSam(CONFIG: string, fileName: string) {
   }
   return true
 }
-
 export function validateProviderCode(PROVIDER_CODES: string[], OPERATOR: string) {
   if (!PROVIDER_CODES.includes(OPERATOR)) {
     throw new Error(
@@ -147,7 +139,6 @@ export function validateLocationId(LOCATION_ID: string) {
   }
   return true
 }
-
 export function genSemoviId(sam_id_hex, sam_id_dec, provider_code) {
   const inputString = `${sam_id_hex}-${sam_id_dec}-${provider_code}`
   const hash = createHash('sha256').update(inputString).digest('base64url')
@@ -155,7 +146,6 @@ export function genSemoviId(sam_id_hex, sam_id_dec, provider_code) {
   // Tomamos los primeros 10 caracteres (sin símbolos raros)
   return `${hash.substring(0, 10)}`
 }
-
 export function isSamValid(samsp_id_hex) {
   if (samsp_id_hex) {
 
@@ -176,7 +166,6 @@ export function isSamValid(samsp_id_hex) {
     return true
   }
 }
-
 export async function getAllValidSams(model) {
   const result = await model.findAll({
     attributes: ['provider_code', 'sam_id_hex'],
@@ -184,7 +173,6 @@ export async function getAllValidSams(model) {
   })
   return result
 }
-
 export function isSamInInventory(samsValid: any[], PROVIDER_CODES: any[], SERIAL_HEX: string, OPERATOR: string) {
   return samsValid.some(sam =>
     sam.sam_id_hex === SERIAL_HEX && PROVIDER_CODES.includes(OPERATOR)
