@@ -1,9 +1,10 @@
 import fs from 'fs'
 import csv from 'csv-parser'
 import stripBomStream from "strip-bom-stream"
-import { getAllValidSams, validateHeaders } from "./validation"
+import { checkDuplicates, eliminarRegistros, getAllValidSams, validateChangeInRecord, validateHeaders } from "./validation"
 import { validateRow } from '../middleware/validationRow'
 import SamsSitp from '../models/SamsSitp'
+import { getHighestVersionRecords, getInvalidRecords, getMaxVersion } from './versions'
 
 export interface CategorizedFiles {
   altasFiles: Express.Multer.File[]
@@ -58,15 +59,19 @@ export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFil
 }
 
 export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) => {
-
-  for (const file of files) {
-    const result = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
-    if (result.errors.length > 0) {
-      return result.errors
-    } else {
-      return result.validData
+  const processingPromises = files.map(async (file) => {
+    try {
+      const { errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES);
+      return { errors, validData }
+    } catch (error) {
+      return {
+        fileName: file.originalname,
+        errors: error,
+      }
     }
-  }
+  })
+  // Esperar a que todos los archivos se procesen
+  return await Promise.all(processingPromises)
 }
 
 export async function processSingleFile(
@@ -76,7 +81,6 @@ export async function processSingleFile(
 ): Promise<{ validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
     let lineNumber = 0;
-    const filesErrors: ValidationError[] = [];
     const errorMessages: ValidationErrorItem[] = [];
     const fileValidData: any[] = [];
     const samsValid = await getAllValidSams(SamsSitp);
@@ -123,4 +127,93 @@ export async function processSingleFile(
         reject(error);
       });
   });
+}
+
+export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) {
+
+  const categorizeFiles = categorizeAllFiles(files)
+  let hasAltasErrors = false
+  let hasBajasErrors = false
+  let hasCambiosErrors = false
+  const results = []
+
+  try {
+    let [altasData, bajasData, cambiosData] = await Promise.all([
+      processFileGroup(categorizeFiles.altasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
+      processFileGroup(categorizeFiles.bajasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
+      processFileGroup(categorizeFiles.cambiosFiles, REQUIRED_HEADERS, PROVIDER_CODES)
+    ])
+    hasAltasErrors = altasData.some(result => result.errors && result.errors.length > 0)
+    hasBajasErrors = bajasData.some(result => result.errors && result.errors.length > 0)
+    hasCambiosErrors = cambiosData.some(result => result.errors && result.errors.length > 0)
+    
+    if (hasAltasErrors || hasBajasErrors || hasCambiosErrors) {
+      altasData.forEach(result => {
+        results.push({
+          fileName: result.fileName,
+          fileErrors: result.errors
+        })
+      })
+      bajasData.forEach(result => {
+        results.push({
+          fileName: result.fileName,
+          fileErrors: result.errors
+        })
+      })
+      cambiosData.forEach(result => {
+        results.push({
+          fileName: result.fileName,
+          fileErrors: result.errors
+        })
+      })
+      return results
+    } else {
+      const currentVersionRecords = await getHighestVersionRecords(Model)
+      const currentVersion = await getMaxVersion(Model)
+      const newVersion = currentVersion + 1
+      const keyField = 'SERIAL_HEX'
+      const allInvalidRecords = await getInvalidRecords(Model)
+      const altasFinal = []
+      const bajasFinal = []
+      const cambiosFinal = []
+
+      altasData.forEach(file => {
+        altasFinal.push(...file.validData)
+      })
+      bajasData.forEach(file => {
+        bajasFinal.push(...file.validData)
+      })
+      cambiosData.forEach(file => {
+        // console.log(file.validData)
+        cambiosFinal.push(...file.validData)
+      })
+      const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
+
+      const { cambiosValidos, sinCambios } = validateChangeInRecord(currentVersionRecords, cambiosFinal)
+
+      const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } = checkDuplicates(currentVersionRecords, altasFinal, keyField)
+
+      const finalRecords = eliminarRegistros(currentVersionRecords, altasValidas, cambiosValidos)
+
+      const newRecords = [...finalRecords, ...altasValidas]
+
+      results.push({
+        newVersion,
+        currentVersion,
+        currentVersionCount: currentVersionRecords.length,
+        newRecordsCount: newRecords.length,
+        newRecordsVersion: newRecords,
+        altasDuplicadas,
+        bajasInactivas,
+        sinCambios,
+        bajasValidas,
+        altasValidas,
+        cambiosValidos
+      })
+      return results
+    }
+  } catch (error) {
+    console.log('Error al validar archivos:', error)
+  }
+
 }
