@@ -3,14 +3,12 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { categorizeAllFiles, processFileGroup, processSingleFile } from '../utils/files'
+import { categorizeAllFiles, processFileGroup, processSingleFile, validateInfoFiles } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
 import { Op } from 'sequelize'
 import { validateChangeInRecord } from '../utils/validation'
-
-
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
 const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
@@ -24,75 +22,41 @@ export class WhitelistController {
   static validateWhiteListCV = async (req: MulterRequest, res: Response) => {
     try {
       if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: 'No se subieron archivos' });
+        return res.status(400).json({ error: 'No se subieron archivos' })
       }
 
-      const files = req.files;
-      const results = [];
-      let hasErrors = false;
+      const validationResult = await validateInfoFiles(req.files, WhiteListCV, REQUIRED_HEADERS, PROVIDER_CODES)
 
-      // Procesar todos los archivos en paralelo (o en serie si prefieres)
-      const processingPromises = files.map(async (file) => {
-        try {
-          const { errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES);
-          return { fileName: file.originalname, errors, validData };
-        } catch (error) {
-          return {
-            fileName: file.originalname,
-            errors: error,
-            validData: null
-          };
-        }
-      });
+      const data = await Promise.all(validationResult)
 
-      // Esperar a que todos los archivos se procesen
-      const fileResults = await Promise.all(processingPromises);
-      // Verificar si hay errores en alguno de los archivos
-      hasErrors = fileResults.some(result => result.errors && result.errors.length > 0);
+      const results = []
+      let hasErrors = false
+
+      hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
       if (hasErrors) {
-        fileResults.forEach(result => {
-          if (result.errors.length > 0) {
+        data.forEach(result => {
+          if (result.fileErrors.length > 0) {
             results.push({
               fileName: result.fileName,
-              fileErrors: result.errors
-            });
-          }
-        });
-      } else {
-        fileResults.forEach(result => {
-          if (result.validData.length > 0) {
-            results.push({
-              fileName: result.fileName,
-              validData: result.validData
+              fileErrors: result.fileErrors
             })
           }
         })
-      }
-
-      // Enviar respuesta adecuada
-      if (hasErrors) {
         const response = {
           success: !hasErrors,
           errorsFiles: results,
         }
-        return res.status(400).json(response);
+        return res.status(400).json(response)
       } else {
-        const response = {
-          success: true,
-          validData: results,
-        }
-        return res.status(200).json(response);
+        return res.status(200).json(data)
       }
-
     } catch (error) {
-      console.error('Error en validateWhiteListCV:', error);
       return res.status(500).json({
         error: 'Error interno del servidor',
         details: error.message
-      });
+      })
     }
-  };
-
+  }
   static getSamCvByID = async (req: Request, res: Response) => {
     const { hexId } = req.params
     const result = await searchByHexID(hexId, WhiteListCV)
