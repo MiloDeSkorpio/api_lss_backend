@@ -16,21 +16,27 @@ export function eliminarRegistros<T extends { SERIAL_DEC: string }>(
     )
   )
 }
-export function  validateChangeInRecord(currentRecords: any[],cambiosData: any[]){
+export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]) {
   const sinCambios = []
   const cambiosValidos = []
   const camposExcluidos = ['ESTADO', 'VERSION']
 
+  const normalizeVal = (v: any) =>
+    v === null || v === undefined ? '' : String(v).trim()
+
   cambiosData.forEach(registroCambio => {
-    const registroExistente = currentRecords.find(r => r.SERIAL_DEC === registroCambio.SERIAL_DEC)
+    const registroExistente = currentRecords.find(
+      r => normalizeVal(r.SERIAL_DEC) === normalizeVal(registroCambio.SERIAL_DEC)
+    )
+
     if (!registroExistente) {
       sinCambios.push(registroCambio)
       return
     }
-    // Verificar diferencias en todos los campos (excepto excluidos)
+
     const tieneCambios = Object.keys(registroCambio).some(key => {
       if (camposExcluidos.includes(key)) return false
-      return registroCambio[key] !== registroExistente[key]
+      return normalizeVal(registroCambio[key]) !== normalizeVal(registroExistente[key])
     })
 
     if (tieneCambios) {
@@ -39,10 +45,8 @@ export function  validateChangeInRecord(currentRecords: any[],cambiosData: any[]
       sinCambios.push(registroCambio)
     }
   })
-  return {
-    sinCambios,
-    cambiosValidos
-  }
+
+  return { sinCambios, cambiosValidos }
 }
 export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField: string) {
   
