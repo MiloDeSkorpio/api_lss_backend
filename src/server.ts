@@ -17,7 +17,7 @@ server.use(cors({
 
 server.use(morgan('dev'))
 // Leer datos de formularios
-server.use(express.json())
+server.use(express.json({limit: '50mb'}))
 // Rutas
 server.use('/api/whitelist',whiteListRoutes)
 server.use('/api/sams',samsRoutes)
