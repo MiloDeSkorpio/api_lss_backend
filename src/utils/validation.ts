@@ -6,13 +6,13 @@ export function sonEquivalentesNum(dec: number, hex: string): boolean {
   if (isNaN(hexAsDec)) throw new Error(`Hex inválido: ${hex}`)
   return hexAsDec === dec
 }
-export function eliminarRegistros<T extends { SERIAL_DEC: string }>(
+export function eliminarRegistros<T extends { SERIAL_HEX: string }>(
   original: T[],
   ...arraysAEliminar: T[][]
 ): T[] {
   return original.filter(row =>
     !arraysAEliminar.some(array =>
-      array.some(rowAEliminar => row.SERIAL_DEC === rowAEliminar.SERIAL_DEC)
+      array.some(rowAEliminar => row.SERIAL_HEX === rowAEliminar.SERIAL_HEX)
     )
   )
 }
