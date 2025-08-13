@@ -1,4 +1,4 @@
-import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions } from 'sequelize'
+import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions, Op } from 'sequelize'
 import { checkDuplicates, eliminarRegistros, validateChangeInRecord } from "./validation"
 
 export async function processVersionUpdate<T extends Model>(
@@ -9,97 +9,64 @@ export async function processVersionUpdate<T extends Model>(
   cambiosData: any[],
   keyField: string
 ) {
-
   const currentVersion = await getMaxVersion(model)
   const newVersion = currentVersion + 1
-
-  const allInvalidRecords = await getInvalidRecords(model)
-
-  const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasData, keyField)
-
-  const { cambiosValidos, sinCambios } = validateChangeInRecord(currentVersionRecords, cambiosData)
-
-  const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } = checkDuplicates(currentVersionRecords, altasData, keyField)
-
-  const finalRecords = eliminarRegistros(currentVersionRecords, altasValidas, cambiosValidos)
-
-  const newRecords = [...finalRecords, ...altasValidas]
+  const finalRecords= eliminarRegistros(currentVersionRecords,altasData, cambiosData)
+  const newRecords = [...finalRecords, ...altasData]
 
   const transaction = await model.sequelize.transaction()
-
   try {
-    if (bajasValidas.length > 0 || cambiosValidos.length > 0 || altasValidas.length > 0) {
-
-      if (bajasValidas.length > 0) {
-        const serialesBajas = bajasValidas.map(item => item.SERIAL_DEC)
-
-        await model.update(
-          { ESTADO: 'INACTIVO', VERSION: newVersion },
-          {
-            where: {
-              SERIAL_DEC: serialesBajas,
-              ESTADO: 'ACTIVO',
-              VERSION: currentVersion
-            } as WhereOptions<InferAttributes<T>>,
-            transaction
-          }
-        )
-      }
-      try {
-        
-        if (cambiosValidos.length > 0) {
-          await Promise.all(
-            cambiosValidos.map(item =>
-              model.upsert(
-                { ...item, VERSION: newVersion },
-                {
-                  transaction,
-                  conflictFields: ['SERIAL_DEC'] // Campo único para determinar si existe
-                }
-              )
-            )
-          );
+    // 1. Marcar bajas con nueva versión e INACTIVO
+    if (bajasData.length > 0) {
+      const serialesBajas = bajasData.map(item => item.SERIAL_DEC)
+      await model.update(
+        { ESTADO: 'INACTIVO', VERSION: newVersion },
+        {
+          where: {
+            SERIAL_DEC: serialesBajas,
+            ESTADO: 'ACTIVO',
+            VERSION: currentVersion
+          } as WhereOptions<InferAttributes<T>>,
+          transaction
         }
-        if (newRecords.length > currentVersionRecords.length || newRecords.length < currentVersionRecords.length) {
-          await model.bulkCreate(
-            newRecords.map(item => ({
-              ...item,
-              VERSION: newVersion
-            })),
-            { transaction }
-          )
-        }
-  
-        await transaction.commit()
-  
-        const newVersionRecords = await model.findAll({
-          where: { VERSION: newVersion },
-          raw: true
-        })
-  
-        return {
-          success: true,
-          newVersion,
-          newRecordsCount: newVersionRecords.length,
-          newRecordsVersion: newVersionRecords,
-          altasDuplicadas,
-          bajasInactivas,
-          sinCambios
-        }
-      } catch (error) {
-        console.error(error.message)
-      }
-
-    } else {
-      return { success: false }
+      )
     }
 
+    // 2. Insertar o actualizar cambios con nueva versión
+    if (cambiosData.length > 0) {
+      await Promise.all(
+        cambiosData.map(item =>
+          model.upsert(
+            { ...item, VERSION: newVersion },
+            {
+              transaction,
+              conflictFields: [keyField] // Campo único para determinar si existe
+            }
+          )
+        )
+      )
+    }
+
+    // 3. Insertar altas con nueva versión
+    if (altasData.length > 0) {
+      await model.bulkCreate(
+        newRecords.map(item => ({
+          ...item,
+          VERSION: newVersion
+        })),
+        { transaction }
+      )
+    }
+
+    await transaction.commit()
+    return { success: true }
   } catch (error) {
     await transaction.rollback()
-    console.error('Error en procesamiento:', error)
+    console.log(error)
     throw error
   }
 }
+
 
 export async function getMaxVersion(model) {
   try {
