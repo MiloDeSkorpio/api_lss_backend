@@ -3,7 +3,7 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { categorizeAllFiles, processFileGroup, processSingleFile, validateInfoFiles } from '../utils/files'
+import { categorizeAllFiles, processFileGroup, validateInfoFiles } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
@@ -240,29 +240,23 @@ export class WhitelistController {
 
     res.status(200).json(transformedResult)
   }
-  static newVersionCV = async (req: MulterRequest, res: Response) => {
+  static newVersionCV = async (req: Request, res: Response) => {
 
-    if (!req.files || req.files.length === 0) {
+    if (!req.body || req.body.length === 0) {
       return res.status(400).json({ error: 'No se subieron archivos' })
     }
+    const { altasValidas, bajasValidas, cambiosValidos } = req.body
 
-    const files = req.files
-    const categorizeFiles = categorizeAllFiles(files)
     const keyField = 'SERIAL_DEC'
     try {
       const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
       const currentVersion = await getMaxVersion(WhiteListCV)
-      let [altasData, bajasData, cambiosData] = await Promise.all([
-        processFileGroup(categorizeFiles.altasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
-        processFileGroup(categorizeFiles.bajasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
-        processFileGroup(categorizeFiles.cambiosFiles, REQUIRED_HEADERS, PROVIDER_CODES)
-      ])
-
-      if (currentVersionRecords.length < 0) {
-        if (bajasData.length > 0 || cambiosData.length > 0) {
+      
+      if (currentVersionRecords.length === 0) {
+        if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
           console.warn('Primera versión - Ignorando datos de bajas y cambios')
-          bajasData.length = 0
-          cambiosData.length = 0
+          bajasValidas.length = 0
+          cambiosValidos.length = 0
         }
         const newVersion = currentVersion + 1
 
@@ -271,7 +265,7 @@ export class WhitelistController {
         process.nextTick(async () => {
           try {
             const result = await WhiteListCV.bulkCreate(
-              altasData.map(item => ({
+              altasValidas.map(item => ({
                 ...item,
                 VERSION: newVersion
               }))
@@ -288,9 +282,9 @@ export class WhitelistController {
             const result = await processVersionUpdate(
               currentVersionRecords,
               WhiteListCV,
-              altasData,
-              bajasData,
-              cambiosData,
+              altasValidas,
+              bajasValidas,
+              cambiosValidos,
               keyField
             )
 
@@ -301,13 +295,13 @@ export class WhitelistController {
             return res.status(200).json(result)
 
           } catch (error) {
-            console.error("Error en procesamiento en segundo plano:", error.message)
+            console.error("Error en procesamiento en segundo plano:", error)
           }
         })
       }
 
     } catch (error) {
-
+      console.log('The error')
       res.status(500).json({ error: `${error.message}` })
     }
   }
