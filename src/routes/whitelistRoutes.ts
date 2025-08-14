@@ -13,6 +13,12 @@ router.post('/validate-cv',
   multerErrorHandler,
   WhitelistController.validateWhiteListCV
 )
+router.post('/validate',
+  uploadCSVs,
+  handleInputErrors,
+  multerErrorHandler,
+  WhitelistController.validateWhiteList
+)
 
 router.get('/last-version-cv',
   WhitelistController.getLastVersionRecordsCV
@@ -41,11 +47,11 @@ router.get('/last-version',
 router.post('/new-version-cv',
   uploadCSVs,
   handleInputErrors,
-  multerErrorHandler,
   WhitelistController.newVersionCV
 )
 router.post('/new-version',
   uploadCSVs,
+  handleInputErrors,
   WhitelistController.newVersion
 )
 
@@ -78,6 +84,5 @@ router.post('/restore-version',
   handleInputErrors,
   WhitelistController.restoreWhitelistVersion
 )
-
 
 export default router
