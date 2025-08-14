@@ -61,8 +61,8 @@ export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFil
 export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) => {
   const processingPromises = files.map(async (file) => {
     try {
-      const { errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES);
-      return { errors, validData }
+      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
+      return { fileName, errors, validData }
     } catch (error) {
       return {
         fileName: file.originalname,
@@ -78,31 +78,31 @@ export async function processSingleFile(
   file: Express.Multer.File,
   REQUIRED_HEADERS: string[],
   PROVIDER_CODES: string[]
-): Promise<{ validData: any[]; errors: ValidationErrorItem[] }> {
+): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
-    let lineNumber = 0;
-    const errorMessages: ValidationErrorItem[] = [];
-    const fileValidData: any[] = [];
-    const samsValid = await getAllValidSams(SamsSitp);
+    let lineNumber = 0
+    const errorMessages: ValidationErrorItem[] = []
+    const fileValidData: any[] = []
+    const samsValid = await getAllValidSams(SamsSitp)
 
-    let headersValid = true;
+    let headersValid = true
 
     const stream = fs.createReadStream(file.path)
       .pipe(stripBomStream())
-      .pipe(csv());
+      .pipe(csv())
 
     stream
       .on('headers', (headers: string[]) => {
-        const missing = validateHeaders(headers, REQUIRED_HEADERS);
+        const missing = validateHeaders(headers, REQUIRED_HEADERS)
         if (missing.length > 0) {
-          headersValid = false;
+          headersValid = false
           errorMessages.push({
             message: `Faltan columnas: ${missing.join(', ')}`,
-          });
+          })
         }
       })
       .on('data', (row) => {
-        lineNumber++;
+        lineNumber++
         if (headersValid) {
           validateRow(
             row,
@@ -112,21 +112,22 @@ export async function processSingleFile(
             file.originalname,
             PROVIDER_CODES,
             samsValid
-          );
+          )
         }
       })
       .on('end', () => {
-        fs.unlinkSync(file.path);
+        fs.unlinkSync(file.path)
         resolve({
+          fileName: file.originalname,
           validData: fileValidData,
           errors: errorMessages
-        });
+        })
       })
       .on('error', (error) => {
-        fs.unlinkSync(file.path);
-        reject(error);
-      });
-  });
+        fs.unlinkSync(file.path)
+        reject(error)
+      })
+  })
 }
 
 export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) {
@@ -184,7 +185,6 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
         bajasFinal.push(...file.validData)
       })
       cambiosData.forEach(file => {
-        // console.log(file.validData)
         cambiosFinal.push(...file.validData)
       })
       const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
