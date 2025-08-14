@@ -3,7 +3,7 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { categorizeAllFiles, processFileGroup, validateInfoFiles } from '../utils/files'
+import { validateInfoFiles } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
@@ -26,6 +26,44 @@ export class WhitelistController {
       }
 
       const validationResult = await validateInfoFiles(req.files, WhiteListCV, REQUIRED_HEADERS, PROVIDER_CODES)
+
+      const data = await Promise.all(validationResult)
+
+      const results = []
+      let hasErrors = false
+
+      hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
+      if (hasErrors) {
+        data.forEach(result => {
+          if (result.fileErrors.length > 0) {
+            results.push({
+              fileName: result.fileName,
+              fileErrors: result.fileErrors
+            })
+          }
+        })
+        const response = {
+          success: !hasErrors,
+          errorsFiles: results,
+        }
+        return res.status(400).json(response)
+      } else {
+        return res.status(200).json(data)
+      }
+    } catch (error) {
+      return res.status(500).json({
+        error: 'Error interno del servidor',
+        details: error.message
+      })
+    }
+  }
+  static validateWhiteList = async (req: MulterRequest, res: Response) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'No se subieron archivos' })
+      }
+
+      const validationResult = await validateInfoFiles(req.files, WhiteList, REQUIRED_HEADERS, PROVIDER_CODES)
 
       const data = await Promise.all(validationResult)
 
@@ -307,27 +345,21 @@ export class WhitelistController {
   }
   static newVersion = async (req: MulterRequest, res: Response) => {
 
-    if (!req.files || req.files.length === 0) {
+    if (!req.body || req.body.length === 0) {
       return res.status(400).json({ error: 'No se subieron archivos' })
     }
+    const { altasValidas, bajasValidas, cambiosValidos } = req.body
 
-    const files = req.files
-    const categorizeFiles = categorizeAllFiles(files)
     const keyField = 'SERIAL_DEC'
     try {
       const currentVersionRecords = await getHighestVersionRecords(WhiteList)
       const currentVersion = await getMaxVersion(WhiteList)
-      let [altasData, bajasData, cambiosData] = await Promise.all([
-        processFileGroup(categorizeFiles.altasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
-        processFileGroup(categorizeFiles.bajasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
-        processFileGroup(categorizeFiles.cambiosFiles, REQUIRED_HEADERS, PROVIDER_CODES)
-      ])
-
-      if (currentVersionRecords.length < 0) {
-        if (bajasData.length > 0 || cambiosData.length > 0) {
+      
+      if (currentVersionRecords.length === 0) {
+        if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
           console.warn('Primera versión - Ignorando datos de bajas y cambios')
-          bajasData.length = 0
-          cambiosData.length = 0
+          bajasValidas.length = 0
+          cambiosValidos.length = 0
         }
         const newVersion = currentVersion + 1
 
@@ -336,7 +368,7 @@ export class WhitelistController {
         process.nextTick(async () => {
           try {
             const result = await WhiteList.bulkCreate(
-              altasData.map(item => ({
+              altasValidas.map(item => ({
                 ...item,
                 VERSION: newVersion
               }))
@@ -353,9 +385,9 @@ export class WhitelistController {
             const result = await processVersionUpdate(
               currentVersionRecords,
               WhiteList,
-              altasData,
-              bajasData,
-              cambiosData,
+              altasValidas,
+              bajasValidas,
+              cambiosValidos,
               keyField
             )
 
@@ -366,13 +398,13 @@ export class WhitelistController {
             return res.status(200).json(result)
 
           } catch (error) {
-            console.error("Error en procesamiento en segundo plano:", error.message)
+            console.error("Error en procesamiento en segundo plano:", error)
           }
         })
       }
 
     } catch (error) {
-
+      console.log('The error')
       res.status(500).json({ error: `${error.message}` })
     }
   }
@@ -405,7 +437,7 @@ export class WhitelistController {
         return { current: currentData, old: oldData }
       }
 
-      const { cambiosValidos } = validateChangeInRecord(currentData, oldData)
+      const { cambiosValidos } = validateChangeInRecord(oldData,currentData)
       const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
       const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
       const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
