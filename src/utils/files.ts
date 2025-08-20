@@ -196,12 +196,12 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
       const finalRecords = eliminarRegistros(currentVersionRecords, altasValidas, cambiosValidos)
 
       const newRecords = [...finalRecords, ...altasValidas]
-
+      const newR = currentVersionRecords.length + altasValidas.length - bajasValidas.length
       results.push({
         newVersion,
         currentVersion,
         currentVersionCount: currentVersionRecords.length,
-        newRecordsCount: newRecords.length,
+        newRecordsCount: newR,
         newRecordsVersion: newRecords,
         altasDuplicadas,
         bajasInactivas,
