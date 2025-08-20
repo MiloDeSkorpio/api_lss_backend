@@ -11,24 +11,20 @@ export async function processVersionUpdate<T extends Model>(
 ) {
   const currentVersion = await getMaxVersion(model)
   const newVersion = currentVersion + 1
-  const finalRecords= eliminarRegistros(currentVersionRecords,altasData, cambiosData)
+  const finalRecords = eliminarRegistros(currentVersionRecords, bajasData, cambiosData)
   const newRecords = [...finalRecords, ...altasData]
 
   const transaction = await model.sequelize.transaction()
   try {
     // 1. Marcar bajas con nueva versión e INACTIVO
     if (bajasData.length > 0) {
-      const serialesBajas = bajasData.map(item => item.SERIAL_DEC)
-      await model.update(
-        { ESTADO: 'INACTIVO', VERSION: newVersion },
-        {
-          where: {
-            SERIAL_DEC: serialesBajas,
-            ESTADO: 'ACTIVO',
-            VERSION: currentVersion
-          } as WhereOptions<InferAttributes<T>>,
-          transaction
-        }
+      await model.bulkCreate(
+        bajasData.map(item => ({
+          ...item,
+          ESTADO: 'INACTIVO',
+          VERSION: newVersion
+        })),
+        { transaction }
       )
     }
 
@@ -48,7 +44,7 @@ export async function processVersionUpdate<T extends Model>(
     }
 
     // 3. Insertar altas con nueva versión
-    if (altasData.length > 0) {
+    if (newRecords.length > 0) {
       await model.bulkCreate(
         newRecords.map(item => ({
           ...item,
