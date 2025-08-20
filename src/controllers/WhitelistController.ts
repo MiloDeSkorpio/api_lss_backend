@@ -289,7 +289,6 @@ export class WhitelistController {
     try {
       const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
       const currentVersion = await getMaxVersion(WhiteListCV)
-      
       if (currentVersionRecords.length === 0) {
         if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
           console.warn('Primera versión - Ignorando datos de bajas y cambios')
@@ -349,12 +348,10 @@ export class WhitelistController {
       return res.status(400).json({ error: 'No se subieron archivos' })
     }
     const { altasValidas, bajasValidas, cambiosValidos } = req.body
-
     const keyField = 'SERIAL_DEC'
     try {
       const currentVersionRecords = await getHighestVersionRecords(WhiteList)
       const currentVersion = await getMaxVersion(WhiteList)
-      
       if (currentVersionRecords.length === 0) {
         if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
           console.warn('Primera versión - Ignorando datos de bajas y cambios')
@@ -437,7 +434,7 @@ export class WhitelistController {
         return { current: currentData, old: oldData }
       }
 
-      const { cambiosValidos } = validateChangeInRecord(oldData,currentData)
+      const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
       const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
       const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
       const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
@@ -469,22 +466,30 @@ export class WhitelistController {
       let cambiosDataV = 0
       // Opciones base para las consultas
       const baseOptions: any = {
-        attributes: { exclude: ['ESTADO', 'VERSION'] }, // Excluir campos automáticos
-        raw: true
+        attributes: { exclude: ['VERSION'] },
+        raw: true,
+        where: {
+          ESTADO: 'ACTIVO'
+        }
       }
 
       // Obtener ambas versiones en paralelo
       const [currentData, oldData] = await Promise.all([
         WhiteList.findAll({
           ...baseOptions,
-          where: { ...baseOptions.where, VERSION: currentVersion }
+          where: {
+            ...baseOptions.where,
+            VERSION: currentVersion
+          }
         }),
         WhiteList.findAll({
           ...baseOptions,
-          where: { ...baseOptions.where, VERSION: oldVersion }
+          where: {
+            ...baseOptions.where,
+            VERSION: oldVersion
+          }
         })
       ])
-
       // Si no hay datos en alguna versión
       if (!currentData || !oldData) {
         return { current: currentData, old: oldData }
