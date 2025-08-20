@@ -26,7 +26,7 @@ export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]
 
   cambiosData.forEach(registroCambio => {
     const registroExistente = currentRecords.find(
-      r => normalizeVal(r.SERIAL_DEC) === normalizeVal(registroCambio.SERIAL_DEC)
+      r => normalizeVal(r.SERIAL_HEX) === normalizeVal(registroCambio.SERIAL_HEX)
     )
 
     if (!registroExistente) {
