@@ -18,83 +18,47 @@ interface MulterRequest extends Request {
   files: Express.Multer.File[]
 }
 
+const validateFiles = (model => async (req: MulterRequest, res: Response) => {
+    try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No se subieron archivos' })
+    }
+
+    const validationResult = await validateInfoFiles(req.files, model, REQUIRED_HEADERS, PROVIDER_CODES)
+    const data = await Promise.all(validationResult)
+
+    const results = []
+    const hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
+
+    if (hasErrors) {
+      data.forEach(result => {
+        if (result.fileErrors.length > 0) {
+          results.push({
+            fileName: result.fileName,
+            fileErrors: result.fileErrors
+          })
+        }
+      })
+      const response = {
+        success: !hasErrors,
+        errorsFiles: results,
+      }
+      return res.status(400).json(response)
+    } else {
+      return res.status(200).json(data)
+    }
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    })
+  }
+})
+
 export class WhitelistController {
-  static validateWhiteListCV = async (req: MulterRequest, res: Response) => {
-    try {
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: 'No se subieron archivos' })
-      }
+  static validateWLCVFiles = validateFiles(WhiteListCV)
+  static validateWLCLFiles = validateFiles(WhiteList)
 
-      const validationResult = await validateInfoFiles(req.files, WhiteListCV, REQUIRED_HEADERS, PROVIDER_CODES)
-
-      const data = await Promise.all(validationResult)
-
-      const results = []
-      let hasErrors = false
-
-      hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
-      if (hasErrors) {
-        data.forEach(result => {
-          if (result.fileErrors.length > 0) {
-            results.push({
-              fileName: result.fileName,
-              fileErrors: result.fileErrors
-            })
-          }
-        })
-        const response = {
-          success: !hasErrors,
-          errorsFiles: results,
-        }
-        return res.status(400).json(response)
-      } else {
-        return res.status(200).json(data)
-      }
-    } catch (error) {
-      return res.status(500).json({
-        error: 'Error interno del servidor',
-        details: error.message
-      })
-    }
-  }
-  static validateWhiteList = async (req: MulterRequest, res: Response) => {
-    try {
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: 'No se subieron archivos' })
-      }
-
-      const validationResult = await validateInfoFiles(req.files, WhiteList, REQUIRED_HEADERS, PROVIDER_CODES)
-
-      const data = await Promise.all(validationResult)
-
-      const results = []
-      let hasErrors = false
-
-      hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
-      if (hasErrors) {
-        data.forEach(result => {
-          if (result.fileErrors.length > 0) {
-            results.push({
-              fileName: result.fileName,
-              fileErrors: result.fileErrors
-            })
-          }
-        })
-        const response = {
-          success: !hasErrors,
-          errorsFiles: results,
-        }
-        return res.status(400).json(response)
-      } else {
-        return res.status(200).json(data)
-      }
-    } catch (error) {
-      return res.status(500).json({
-        error: 'Error interno del servidor',
-        details: error.message
-      })
-    }
-  }
   static getSamCvByID = async (req: Request, res: Response) => {
     const { hexId } = req.params
     const result = await searchByHexID(hexId, WhiteListCV)
