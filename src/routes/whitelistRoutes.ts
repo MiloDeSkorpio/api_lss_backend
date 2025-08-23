@@ -11,13 +11,13 @@ router.post('/validate-cv',
   uploadCSVs,
   handleInputErrors,
   multerErrorHandler,
-  WhitelistController.validateWhiteListCV
+  WhitelistController.validateWLCVFiles
 )
 router.post('/validate',
   uploadCSVs,
   handleInputErrors,
   multerErrorHandler,
-  WhitelistController.validateWhiteList
+  WhitelistController.validateWLCLFiles
 )
 
 router.get('/last-version-cv',
