@@ -3,12 +3,12 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { validateInfoFiles } from '../utils/files'
+import { validateFileName, validateInfoFiles, ValidationErrorItem } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
 import { Op } from 'sequelize'
-import { validateChangeInRecord } from '../utils/validation'
+import { validateChangeInRecord, validateHeaders } from '../utils/validation'
 
 const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
 const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
@@ -77,6 +77,83 @@ const getSamById = (model: any) => async (req: Request, res: Response) => {
   }
 }
 
+const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
+  const samsFound: any[] = []
+  const samsNotFound: any[] = []
+  let headersValid = true
+  let lineNumber = 0
+  const errorMessages: ValidationErrorItem[] = []
+  const pendingPromises: Promise<void>[] = []
+  const REQ_HEADER = ['serial_hex']
+  try {
+    if (!req.file || !req.file.path) {
+      return res.status(400).send({ error: 'No se proporcionó archivo o la ruta es inválida' })
+    }
+
+    validateFileName(req.file.originalname)
+
+    await new Promise<void>((resolve, reject) => {
+      fs.createReadStream(req.file.path)
+        .pipe(stripBomStream())
+        .pipe(csv())
+        .on('headers', (headers: string[]) => {
+          const missing = validateHeaders(headers, REQ_HEADER)
+          if (missing.length > 0) {
+            headersValid = false
+            errorMessages.push({
+              message: `Faltan columnas: ${missing.join(', ')}`,
+            })
+          }
+        })
+        .on('data', (row) => {
+          lineNumber++
+
+          if (headersValid) {
+            // Guardamos la promesa en lugar de usar await directo
+            const promise = (async () => {
+              const sam = await model.findOne({ where: { SERIAL_HEX: row.serial_hex } })
+              if (sam) {
+                samsFound.push({ lineNumber, ...row })
+              } else {
+                samsNotFound.push({ lineNumber, ...row })
+              }
+            })()
+
+            pendingPromises.push(promise)
+          }
+        })
+        .on('end', async () => {
+          try {
+            // Esperar todas las promesas pendientes antes de terminar
+            await Promise.all(pendingPromises)
+            resolve()
+          } catch (err) {
+            reject(err)
+          }
+        })
+        .on('error', (error) => {
+          reject(error)
+        })
+    })
+
+    if (!headersValid) {
+      return res.status(400).send({ errors: errorMessages })
+    }
+
+    return res.status(200).send({
+      total: lineNumber,
+      encontrados: samsFound.length,
+      noEncontrados: samsNotFound.length,
+      samsFound,
+      samsNotFound,
+    })
+
+  } catch (error) {
+    console.error("Error en getSamsById:", error)
+    return res.status(500).send({ error: "Error interno al procesar el archivo" })
+  }
+}
+
 export class WhitelistController {
   // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
@@ -84,157 +161,159 @@ export class WhitelistController {
   // Get by SERIAL_HEX
   static getSamCvByID = getSamById(WhiteListCV)
   static getSamByID = getSamById(WhiteList)
+  // Get many by ID from file
+  static getSamsCvByID = getSamsById(WhiteListCV)
+  static getSamsByID = getSamsById(WhiteList)
+  // static getSamsCvByID = async (req: MulterRequest, res: Response) => {
+  //   const resultados: any[] = []
 
-  static getSamsCvByID = async (req: MulterRequest, res: Response) => {
-    const resultados: any[] = []
+  //   try {
+  //     // Validar que el archivo existe
+  //     if (!req.file || !req.file.path) {
+  //       throw new Error('No se proporcionó archivo o la ruta es inválida')
+  //     }
 
-    try {
-      // Validar que el archivo existe
-      if (!req.file || !req.file.path) {
-        throw new Error('No se proporcionó archivo o la ruta es inválida')
-      }
+  //     const batchSize = 100
+  //     let currentBatch = []
 
-      const batchSize = 100
-      let currentBatch = []
+  //     const processBatch = async (batch) => {
+  //       const serials = batch.map(row => row.serial_hex)
 
-      const processBatch = async (batch) => {
-        const serials = batch.map(row => row.serial_hex)
+  //       const foundRecords = await WhiteListCV.findAll({
+  //         where: { SERIAL_HEX: { [Op.in]: serials } },
+  //         raw: true
+  //       })
 
-        const foundRecords = await WhiteListCV.findAll({
-          where: { SERIAL_HEX: { [Op.in]: serials } },
-          raw: true
-        })
+  //       const recordsMap = new Map()
+  //       foundRecords.forEach(record => {
+  //         recordsMap.set(record.SERIAL_HEX, record)
+  //       })
+  //       // Combinar datos del CSV con los registros encontrados
+  //       batch.forEach(row => {
+  //         const matchedRecord = recordsMap.get(row.serial_hex)
+  //         if (matchedRecord) {
+  //           resultados.push({
+  //             ...matchedRecord,      // Todos los campos del registro encontrado
+  //           })
+  //         }
+  //       })
+  //     }
+  //     // Procesar el CSV
+  //     await new Promise((resolve, reject) => {
+  //       fs.createReadStream(req.file.path)
+  //         .pipe(stripBomStream())
+  //         .pipe(csv())
+  //         .on('data', async (row) => {
+  //           currentBatch.push(row)
+  //           if (currentBatch.length >= batchSize) {
+  //             await processBatch(currentBatch)
+  //             currentBatch = []
+  //           }
 
-        const recordsMap = new Map()
-        foundRecords.forEach(record => {
-          recordsMap.set(record.SERIAL_HEX, record)
-        })
-        // Combinar datos del CSV con los registros encontrados
-        batch.forEach(row => {
-          const matchedRecord = recordsMap.get(row.serial_hex)
-          if (matchedRecord) {
-            resultados.push({
-              ...matchedRecord,      // Todos los campos del registro encontrado
-            })
-          }
-        })
-      }
-      // Procesar el CSV
-      await new Promise((resolve, reject) => {
-        fs.createReadStream(req.file.path)
-          .pipe(stripBomStream())
-          .pipe(csv())
-          .on('data', async (row) => {
-            currentBatch.push(row)
-            if (currentBatch.length >= batchSize) {
-              await processBatch(currentBatch)
-              currentBatch = []
-            }
+  //         })
+  //         .on('end', async () => {
+  //           if (currentBatch.length > 0) {
+  //             const resultados = await processBatch(currentBatch)
+  //             resolve(resultados)
+  //           }
+  //         })
+  //         .on('error', (error) => {
+  //           reject(error)
+  //         })
+  //     })
 
-          })
-          .on('end', async () => {
-            if (currentBatch.length > 0) {
-              const resultados = await processBatch(currentBatch)
-              resolve(resultados)
-            }
-          })
-          .on('error', (error) => {
-            reject(error)
-          })
-      })
+  //     res.json(resultados)
+  //   } catch (error) {
+  //     console.error('Error en el procesamiento:', error)
+  //     res.status(500).json({
+  //       success: false,
+  //       error: error.message
+  //     })
+  //   } finally {
+  //     // Limpiar: eliminar el archivo temporal si es necesario
+  //     if (req.file && req.file.path) {
+  //       fs.unlink(req.file.path, (err) => {
+  //         if (err) console.error('Error al eliminar archivo temporal:', err)
+  //       })
+  //     }
+  //   }
 
-      res.json(resultados)
-    } catch (error) {
-      console.error('Error en el procesamiento:', error)
-      res.status(500).json({
-        success: false,
-        error: error.message
-      })
-    } finally {
-      // Limpiar: eliminar el archivo temporal si es necesario
-      if (req.file && req.file.path) {
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Error al eliminar archivo temporal:', err)
-        })
-      }
-    }
+  // }
+  // static getSamsByID = async (req: MulterRequest, res: Response) => {
+  //   const resultados: any[] = []
 
-  }
-  static getSamsByID = async (req: MulterRequest, res: Response) => {
-    const resultados: any[] = []
+  //   try {
+  //     // Validar que el archivo existe
+  //     if (!req.file || !req.file.path) {
+  //       throw new Error('No se proporcionó archivo o la ruta es inválida')
+  //     }
 
-    try {
-      // Validar que el archivo existe
-      if (!req.file || !req.file.path) {
-        throw new Error('No se proporcionó archivo o la ruta es inválida')
-      }
+  //     const batchSize = 100
+  //     let currentBatch = []
 
-      const batchSize = 100
-      let currentBatch = []
+  //     const processBatch = async (batch) => {
+  //       const serials = batch.map(row => row.serial_hex)
 
-      const processBatch = async (batch) => {
-        const serials = batch.map(row => row.serial_hex)
+  //       const foundRecords = await WhiteList.findAll({
+  //         where: { SERIAL_HEX: { [Op.in]: serials } },
+  //         raw: true
+  //       })
 
-        const foundRecords = await WhiteList.findAll({
-          where: { SERIAL_HEX: { [Op.in]: serials } },
-          raw: true
-        })
+  //       const recordsMap = new Map()
+  //       foundRecords.forEach(record => {
+  //         recordsMap.set(record.SERIAL_HEX, record)
+  //       })
+  //       // Combinar datos del CSV con los registros encontrados
+  //       batch.forEach(row => {
+  //         const matchedRecord = recordsMap.get(row.serial_hex)
+  //         if (matchedRecord) {
+  //           resultados.push({
+  //             ...matchedRecord,      // Todos los campos del registro encontrado
+  //           })
+  //         }
+  //       })
+  //     }
+  //     // Procesar el CSV
+  //     await new Promise((resolve, reject) => {
+  //       fs.createReadStream(req.file.path)
+  //         .pipe(stripBomStream())
+  //         .pipe(csv())
+  //         .on('data', async (row) => {
+  //           currentBatch.push(row)
+  //           if (currentBatch.length >= batchSize) {
+  //             await processBatch(currentBatch)
+  //             currentBatch = []
+  //           }
 
-        const recordsMap = new Map()
-        foundRecords.forEach(record => {
-          recordsMap.set(record.SERIAL_HEX, record)
-        })
-        // Combinar datos del CSV con los registros encontrados
-        batch.forEach(row => {
-          const matchedRecord = recordsMap.get(row.serial_hex)
-          if (matchedRecord) {
-            resultados.push({
-              ...matchedRecord,      // Todos los campos del registro encontrado
-            })
-          }
-        })
-      }
-      // Procesar el CSV
-      await new Promise((resolve, reject) => {
-        fs.createReadStream(req.file.path)
-          .pipe(stripBomStream())
-          .pipe(csv())
-          .on('data', async (row) => {
-            currentBatch.push(row)
-            if (currentBatch.length >= batchSize) {
-              await processBatch(currentBatch)
-              currentBatch = []
-            }
+  //         })
+  //         .on('end', async () => {
+  //           if (currentBatch.length > 0) {
+  //             const resultados = await processBatch(currentBatch)
+  //             resolve(resultados)
+  //           }
+  //         })
+  //         .on('error', (error) => {
+  //           reject(error)
+  //         })
+  //     })
 
-          })
-          .on('end', async () => {
-            if (currentBatch.length > 0) {
-              const resultados = await processBatch(currentBatch)
-              resolve(resultados)
-            }
-          })
-          .on('error', (error) => {
-            reject(error)
-          })
-      })
+  //     res.json(resultados)
+  //   } catch (error) {
+  //     console.error('Error en el procesamiento:', error)
+  //     res.status(500).json({
+  //       success: false,
+  //       error: error.message
+  //     })
+  //   } finally {
+  //     // Limpiar: eliminar el archivo temporal si es necesario
+  //     if (req.file && req.file.path) {
+  //       fs.unlink(req.file.path, (err) => {
+  //         if (err) console.error('Error al eliminar archivo temporal:', err)
+  //       })
+  //     }
+  //   }
 
-      res.json(resultados)
-    } catch (error) {
-      console.error('Error en el procesamiento:', error)
-      res.status(500).json({
-        success: false,
-        error: error.message
-      })
-    } finally {
-      // Limpiar: eliminar el archivo temporal si es necesario
-      if (req.file && req.file.path) {
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Error al eliminar archivo temporal:', err)
-        })
-      }
-    }
-
-  }
+  // }
   static getLastVersionRecordsCV = async (req: Request, res: Response) => {
     const result = await getHighestVersionRecords(WhiteListCV)
 
