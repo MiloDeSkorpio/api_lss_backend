@@ -223,6 +223,41 @@ const newVersion = (model) => async (req: Request, res: Response) => {
   }
 }
 
+const compareVersions = (model, baseOptions: any) => async (req: Request, res: Response) => {
+  try {
+    const { currentVersion, oldVersion } = req.body
+    const [currentData, oldData] = await Promise.all([
+      model.findAll({ ...baseOptions, where: { ...baseOptions.where, VERSION: currentVersion } }),
+      model.findAll({ ...baseOptions, where: { ...baseOptions.where, VERSION: oldVersion } })
+    ])
+
+    if (!currentData || !oldData) {
+      return res.status(404).json({ error: "No se encontraron datos para las versiones especificadas" })
+    }
+
+    const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
+    const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
+    const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
+    const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
+    const altas = currentData.filter(r => !idsPrev.has(r.SERIAL_HEX))
+
+    const response = {
+      currentData: currentData.length,
+      oldData: oldData.length,
+      cambiosRes: cambiosValidos.length,
+      altasRes: altas.length,
+      bajasRes: bajas.length,
+      cambiosData: cambiosValidos,
+      bajasData: bajas,
+      altasData: altas
+    }
+    res.json(response)
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ error: "Error interno del servidor" })
+  }
+}
+
 export class WhitelistController {
   // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
@@ -239,121 +274,18 @@ export class WhitelistController {
   // Create new version
   static newVersionCV = newVersion(WhiteListCV)
   static newVersion = newVersion(WhiteList)
+  // Compare versions
+  static compareCVVersions = compareVersions(WhiteListCV, {
+    attributes: { exclude: ['ESTADO', 'VERSION'] },
+    raw: true,
+    where: { ESTADO: 'ACTIVO' }
+  })
+  static compareVersions = compareVersions(WhiteList, {
+    attributes: { exclude: ['ESTADO', 'VERSION'] },
+    raw: true,
+    where: { ESTADO: 'ACTIVO' }
+  })
 
-  static compareCVVersions = async (req: Request, res: Response) => {
-    try {
-      const { currentVersion, oldVersion } = req.body
-      let altasDataV = 0
-      let bajasDataV = 0
-      let cambiosDataV = 0
-      // Opciones base para las consultas
-      const baseOptions: any = {
-        attributes: { exclude: ['ESTADO', 'VERSION'] }, // Excluir campos automáticos
-        raw: true
-      }
-
-      // Obtener ambas versiones en paralelo
-      const [currentData, oldData] = await Promise.all([
-        WhiteListCV.findAll({
-          ...baseOptions,
-          where: { ...baseOptions.where, VERSION: currentVersion }
-        }),
-        WhiteListCV.findAll({
-          ...baseOptions,
-          where: { ...baseOptions.where, VERSION: oldVersion }
-        })
-      ])
-
-      // Si no hay datos en alguna versión
-      if (!currentData || !oldData) {
-        return { current: currentData, old: oldData }
-      }
-
-      const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
-      const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
-      const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
-      const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
-      const altas = currentData.filter(r => !idsPrev.has(r.SERIAL_HEX))
-      bajasDataV = bajas.length
-      altasDataV = altas.length
-      cambiosDataV = cambiosValidos.length
-      const response = {
-        currentData: currentData.length,
-        oldData: oldData.length,
-        cambiosRes: cambiosDataV,
-        altasRes: altasDataV,
-        bajasRes: bajasDataV,
-        cambiosData: cambiosValidos,
-        bajasData: bajas,
-        altasData: altas
-      }
-      res.json(response)
-    } catch (error) {
-      console.log(error)
-    }
-
-  }
-  static compareVersions = async (req: Request, res: Response) => {
-    try {
-      const { currentVersion, oldVersion } = req.body
-      let altasDataV = 0
-      let bajasDataV = 0
-      let cambiosDataV = 0
-      // Opciones base para las consultas
-      const baseOptions: any = {
-        attributes: { exclude: ['VERSION'] },
-        raw: true,
-        where: {
-          ESTADO: 'ACTIVO'
-        }
-      }
-
-      // Obtener ambas versiones en paralelo
-      const [currentData, oldData] = await Promise.all([
-        WhiteList.findAll({
-          ...baseOptions,
-          where: {
-            ...baseOptions.where,
-            VERSION: currentVersion
-          }
-        }),
-        WhiteList.findAll({
-          ...baseOptions,
-          where: {
-            ...baseOptions.where,
-            VERSION: oldVersion
-          }
-        })
-      ])
-      // Si no hay datos en alguna versión
-      if (!currentData || !oldData) {
-        return { current: currentData, old: oldData }
-      }
-
-      const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
-      const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
-      const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
-      const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
-      const altas = currentData.filter(r => !idsPrev.has(r.SERIAL_HEX))
-      bajasDataV = bajas.length
-      altasDataV = altas.length
-      cambiosDataV = cambiosValidos.length
-      const response = {
-        currentData: currentData.length,
-        oldData: oldData.length,
-        cambiosRes: cambiosDataV,
-        altasRes: altasDataV,
-        bajasRes: bajasDataV,
-        cambiosData: cambiosValidos,
-        bajasData: bajas,
-        altasData: altas
-      }
-      res.json(response)
-    } catch (error) {
-      console.log(error)
-    }
-
-  }
   static getResumeCV = async (req: Request, res: Response) => {
     const versions = await getAllVersions(WhiteListCV)
     const currentVersion = await getMaxVersion(WhiteListCV)
