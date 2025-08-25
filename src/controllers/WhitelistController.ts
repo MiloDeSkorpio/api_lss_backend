@@ -154,6 +154,16 @@ const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
   }
 }
 
+const getLastVersionRecords = (model) => async (req: Request, res: Response) => {
+  const result = await getHighestVersionRecords(model)
+  const transformedResult = result.map(record => {
+    return Object.fromEntries(
+      Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
+    )
+  })
+  res.status(200).json(transformedResult)
+}
+
 export class WhitelistController {
   // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
@@ -164,177 +174,32 @@ export class WhitelistController {
   // Get many by ID from file
   static getSamsCvByID = getSamsById(WhiteListCV)
   static getSamsByID = getSamsById(WhiteList)
-  // static getSamsCvByID = async (req: MulterRequest, res: Response) => {
-  //   const resultados: any[] = []
 
-  //   try {
-  //     // Validar que el archivo existe
-  //     if (!req.file || !req.file.path) {
-  //       throw new Error('No se proporcionó archivo o la ruta es inválida')
-  //     }
+  // Get last version records
+  static getLastVersionRecordsCV = getLastVersionRecords(WhiteListCV)
+  static getLastVersionRecords = getLastVersionRecords(WhiteList)
 
-  //     const batchSize = 100
-  //     let currentBatch = []
+  // static getLastVersionRecordsCV = async (req: Request, res: Response) => {
+  //   const result = await getHighestVersionRecords(WhiteListCV)
 
-  //     const processBatch = async (batch) => {
-  //       const serials = batch.map(row => row.serial_hex)
+  //   const transformedResult = result.map(record => {
+  //     return Object.fromEntries(
+  //       Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
+  //     )
+  //   })
 
-  //       const foundRecords = await WhiteListCV.findAll({
-  //         where: { SERIAL_HEX: { [Op.in]: serials } },
-  //         raw: true
-  //       })
-
-  //       const recordsMap = new Map()
-  //       foundRecords.forEach(record => {
-  //         recordsMap.set(record.SERIAL_HEX, record)
-  //       })
-  //       // Combinar datos del CSV con los registros encontrados
-  //       batch.forEach(row => {
-  //         const matchedRecord = recordsMap.get(row.serial_hex)
-  //         if (matchedRecord) {
-  //           resultados.push({
-  //             ...matchedRecord,      // Todos los campos del registro encontrado
-  //           })
-  //         }
-  //       })
-  //     }
-  //     // Procesar el CSV
-  //     await new Promise((resolve, reject) => {
-  //       fs.createReadStream(req.file.path)
-  //         .pipe(stripBomStream())
-  //         .pipe(csv())
-  //         .on('data', async (row) => {
-  //           currentBatch.push(row)
-  //           if (currentBatch.length >= batchSize) {
-  //             await processBatch(currentBatch)
-  //             currentBatch = []
-  //           }
-
-  //         })
-  //         .on('end', async () => {
-  //           if (currentBatch.length > 0) {
-  //             const resultados = await processBatch(currentBatch)
-  //             resolve(resultados)
-  //           }
-  //         })
-  //         .on('error', (error) => {
-  //           reject(error)
-  //         })
-  //     })
-
-  //     res.json(resultados)
-  //   } catch (error) {
-  //     console.error('Error en el procesamiento:', error)
-  //     res.status(500).json({
-  //       success: false,
-  //       error: error.message
-  //     })
-  //   } finally {
-  //     // Limpiar: eliminar el archivo temporal si es necesario
-  //     if (req.file && req.file.path) {
-  //       fs.unlink(req.file.path, (err) => {
-  //         if (err) console.error('Error al eliminar archivo temporal:', err)
-  //       })
-  //     }
-  //   }
-
+  //   res.status(200).json(transformedResult)
   // }
-  // static getSamsByID = async (req: MulterRequest, res: Response) => {
-  //   const resultados: any[] = []
+  // static getLastVersionRecords = async (req: Request, res: Response) => {
+  //   const result = await getHighestVersionRecords(WhiteList)
+  //   const transformedResult = result.map(record => {
+  //     return Object.fromEntries(
+  //       Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
+  //     )
+  //   })
 
-  //   try {
-  //     // Validar que el archivo existe
-  //     if (!req.file || !req.file.path) {
-  //       throw new Error('No se proporcionó archivo o la ruta es inválida')
-  //     }
-
-  //     const batchSize = 100
-  //     let currentBatch = []
-
-  //     const processBatch = async (batch) => {
-  //       const serials = batch.map(row => row.serial_hex)
-
-  //       const foundRecords = await WhiteList.findAll({
-  //         where: { SERIAL_HEX: { [Op.in]: serials } },
-  //         raw: true
-  //       })
-
-  //       const recordsMap = new Map()
-  //       foundRecords.forEach(record => {
-  //         recordsMap.set(record.SERIAL_HEX, record)
-  //       })
-  //       // Combinar datos del CSV con los registros encontrados
-  //       batch.forEach(row => {
-  //         const matchedRecord = recordsMap.get(row.serial_hex)
-  //         if (matchedRecord) {
-  //           resultados.push({
-  //             ...matchedRecord,      // Todos los campos del registro encontrado
-  //           })
-  //         }
-  //       })
-  //     }
-  //     // Procesar el CSV
-  //     await new Promise((resolve, reject) => {
-  //       fs.createReadStream(req.file.path)
-  //         .pipe(stripBomStream())
-  //         .pipe(csv())
-  //         .on('data', async (row) => {
-  //           currentBatch.push(row)
-  //           if (currentBatch.length >= batchSize) {
-  //             await processBatch(currentBatch)
-  //             currentBatch = []
-  //           }
-
-  //         })
-  //         .on('end', async () => {
-  //           if (currentBatch.length > 0) {
-  //             const resultados = await processBatch(currentBatch)
-  //             resolve(resultados)
-  //           }
-  //         })
-  //         .on('error', (error) => {
-  //           reject(error)
-  //         })
-  //     })
-
-  //     res.json(resultados)
-  //   } catch (error) {
-  //     console.error('Error en el procesamiento:', error)
-  //     res.status(500).json({
-  //       success: false,
-  //       error: error.message
-  //     })
-  //   } finally {
-  //     // Limpiar: eliminar el archivo temporal si es necesario
-  //     if (req.file && req.file.path) {
-  //       fs.unlink(req.file.path, (err) => {
-  //         if (err) console.error('Error al eliminar archivo temporal:', err)
-  //       })
-  //     }
-  //   }
-
+  //   res.status(200).json(transformedResult)
   // }
-  static getLastVersionRecordsCV = async (req: Request, res: Response) => {
-    const result = await getHighestVersionRecords(WhiteListCV)
-
-    const transformedResult = result.map(record => {
-      return Object.fromEntries(
-        Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
-      )
-    })
-
-    res.status(200).json(transformedResult)
-  }
-  static getLastVersionRecords = async (req: Request, res: Response) => {
-    const result = await getHighestVersionRecords(WhiteList)
-    const transformedResult = result.map(record => {
-      return Object.fromEntries(
-        Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
-      )
-    })
-
-    res.status(200).json(transformedResult)
-  }
   static newVersionCV = async (req: Request, res: Response) => {
 
     if (!req.body || req.body.length === 0) {
