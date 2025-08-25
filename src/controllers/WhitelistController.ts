@@ -18,8 +18,8 @@ interface MulterRequest extends Request {
   files: Express.Multer.File[]
 }
 
-const validateFiles = (model => async (req: MulterRequest, res: Response) => {
-    try {
+const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
+  try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No se subieron archivos' })
     }
@@ -53,24 +53,38 @@ const validateFiles = (model => async (req: MulterRequest, res: Response) => {
       details: error.message
     })
   }
-})
+}
+
+const getSamById = (model: any) => async (req: Request, res: Response) => {
+  try {
+    const { hexId } = req.params
+
+    if (!hexId) {
+      return res.status(400).send({ message: "hexId is required" })
+    }
+
+    const result = await searchByHexID(hexId, model)
+
+    if (!result) {
+      return res.status(404).send({ message: "Record not found" })
+    }
+
+    return res.status(200).send(result)
+
+  } catch (error) {
+    console.error("Error in getSamById:", error)
+    return res.status(500).send({ message: "Internal server error" })
+  }
+}
 
 export class WhitelistController {
+  // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
   static validateWLCLFiles = validateFiles(WhiteList)
+  // Get by SERIAL_HEX
+  static getSamCvByID = getSamById(WhiteListCV)
+  static getSamByID = getSamById(WhiteList)
 
-  static getSamCvByID = async (req: Request, res: Response) => {
-    const { hexId } = req.params
-    const result = await searchByHexID(hexId, WhiteListCV)
-
-    return res.status(200).send(result)
-  }
-  static getSamByID = async (req: Request, res: Response) => {
-    const { hexId } = req.params
-    const result = await searchByHexID(hexId, WhiteList)
-
-    return res.status(200).send(result)
-  }
   static getSamsCvByID = async (req: MulterRequest, res: Response) => {
     const resultados: any[] = []
 
