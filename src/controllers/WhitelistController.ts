@@ -164,6 +164,65 @@ const getLastVersionRecords = (model) => async (req: Request, res: Response) => 
   res.status(200).json(transformedResult)
 }
 
+const newVersion = (model) => async (req: Request, res: Response) => {
+  if (!req.body || req.body.length === 0) {
+    return res.status(400).json({ error: 'No se subieron archivos' })
+  }
+  const { altasValidas, bajasValidas, cambiosValidos } = req.body
+  const keyField = 'SERIAL_DEC'
+
+  try {
+    const currentVersionRecords = await getHighestVersionRecords(model)
+    const currentVersion = await getMaxVersion(model)
+
+    if (currentVersionRecords.length === 0) {
+      if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
+        console.warn('Primera versión - Ignorando datos de bajas y cambios')
+        bajasValidas.length = 0
+        cambiosValidos.length = 0
+      }
+      const newVersion = currentVersion + 1
+      res.status(202).json({ message: "Archivos recibidos. Procesando en segundo plano..." })
+
+      process.nextTick(async () => {
+        try {
+          const result = await model.bulkCreate(
+            altasValidas.map(item => ({
+              ...item,
+              VERSION: newVersion
+            }))
+          )
+          console.log(` Inserción exitosa: ${result.length} registros añadidos.`)
+        } catch (error) {
+          console.error(" Error en inserción en segundo plano:", error.message)
+        }
+      })
+    } else {
+      process.nextTick(async () => {
+        try {
+          const result = await processVersionUpdate(
+            currentVersionRecords,
+            model,
+            altasValidas,
+            bajasValidas,
+            cambiosValidos,
+            keyField
+          )
+          if (!result.success) {
+            // No se puede enviar respuesta aquí porque ya se envió una.
+            console.error("Problema al Generar la nueva version.")
+          }
+        } catch (error) {
+          console.error("Error en procesamiento en segundo plano:", error)
+        }
+      })
+      res.status(200).json({ message: "Procesando nueva version."})
+    }
+  } catch (error) {
+    res.status(500).json({ error: `${error.message}` })
+  }
+}
+
 export class WhitelistController {
   // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
@@ -174,159 +233,13 @@ export class WhitelistController {
   // Get many by ID from file
   static getSamsCvByID = getSamsById(WhiteListCV)
   static getSamsByID = getSamsById(WhiteList)
-
   // Get last version records
   static getLastVersionRecordsCV = getLastVersionRecords(WhiteListCV)
   static getLastVersionRecords = getLastVersionRecords(WhiteList)
+  // Create new version
+  static newVersionCV = newVersion(WhiteListCV)
+  static newVersion = newVersion(WhiteList)
 
-  // static getLastVersionRecordsCV = async (req: Request, res: Response) => {
-  //   const result = await getHighestVersionRecords(WhiteListCV)
-
-  //   const transformedResult = result.map(record => {
-  //     return Object.fromEntries(
-  //       Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
-  //     )
-  //   })
-
-  //   res.status(200).json(transformedResult)
-  // }
-  // static getLastVersionRecords = async (req: Request, res: Response) => {
-  //   const result = await getHighestVersionRecords(WhiteList)
-  //   const transformedResult = result.map(record => {
-  //     return Object.fromEntries(
-  //       Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
-  //     )
-  //   })
-
-  //   res.status(200).json(transformedResult)
-  // }
-  static newVersionCV = async (req: Request, res: Response) => {
-
-    if (!req.body || req.body.length === 0) {
-      return res.status(400).json({ error: 'No se subieron archivos' })
-    }
-    const { altasValidas, bajasValidas, cambiosValidos } = req.body
-
-    const keyField = 'SERIAL_DEC'
-    try {
-      const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
-      const currentVersion = await getMaxVersion(WhiteListCV)
-      if (currentVersionRecords.length === 0) {
-        if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
-          console.warn('Primera versión - Ignorando datos de bajas y cambios')
-          bajasValidas.length = 0
-          cambiosValidos.length = 0
-        }
-        const newVersion = currentVersion + 1
-
-        res.status(202).json({ message: "Archivos recibidos. Procesando en segundo plano..." })
-
-        process.nextTick(async () => {
-          try {
-            const result = await WhiteListCV.bulkCreate(
-              altasValidas.map(item => ({
-                ...item,
-                VERSION: newVersion
-              }))
-            )
-            console.log(` Inserción exitosa: ${result.length} registros añadidos.`)
-          } catch (error) {
-            console.error(" Error en inserción en segundo plano:", error.message)
-          }
-        })
-      } else {
-
-        process.nextTick(async () => {
-          try {
-            const result = await processVersionUpdate(
-              currentVersionRecords,
-              WhiteListCV,
-              altasValidas,
-              bajasValidas,
-              cambiosValidos,
-              keyField
-            )
-
-            if (!result.success) {
-              return res.status(500).json({ error: "Problema al Generar la nueva version." })
-            }
-
-            return res.status(200).json(result)
-
-          } catch (error) {
-            console.error("Error en procesamiento en segundo plano:", error)
-          }
-        })
-      }
-
-    } catch (error) {
-      console.log('The error')
-      res.status(500).json({ error: `${error.message}` })
-    }
-  }
-  static newVersion = async (req: MulterRequest, res: Response) => {
-
-    if (!req.body || req.body.length === 0) {
-      return res.status(400).json({ error: 'No se subieron archivos' })
-    }
-    const { altasValidas, bajasValidas, cambiosValidos } = req.body
-    const keyField = 'SERIAL_DEC'
-    try {
-      const currentVersionRecords = await getHighestVersionRecords(WhiteList)
-      const currentVersion = await getMaxVersion(WhiteList)
-      if (currentVersionRecords.length === 0) {
-        if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
-          console.warn('Primera versión - Ignorando datos de bajas y cambios')
-          bajasValidas.length = 0
-          cambiosValidos.length = 0
-        }
-        const newVersion = currentVersion + 1
-
-        res.status(202).json({ message: "Archivos recibidos. Procesando en segundo plano..." })
-
-        process.nextTick(async () => {
-          try {
-            const result = await WhiteList.bulkCreate(
-              altasValidas.map(item => ({
-                ...item,
-                VERSION: newVersion
-              }))
-            )
-            console.log(` Inserción exitosa: ${result.length} registros añadidos.`)
-          } catch (error) {
-            console.error(" Error en inserción en segundo plano:", error.message)
-          }
-        })
-      } else {
-
-        process.nextTick(async () => {
-          try {
-            const result = await processVersionUpdate(
-              currentVersionRecords,
-              WhiteList,
-              altasValidas,
-              bajasValidas,
-              cambiosValidos,
-              keyField
-            )
-
-            if (!result.success) {
-              return res.status(500).json({ error: "Problema al Generar la nueva version." })
-            }
-
-            return res.status(200).json(result)
-
-          } catch (error) {
-            console.error("Error en procesamiento en segundo plano:", error)
-          }
-        })
-      }
-
-    } catch (error) {
-      console.log('The error')
-      res.status(500).json({ error: `${error.message}` })
-    }
-  }
   static compareCVVersions = async (req: Request, res: Response) => {
     try {
       const { currentVersion, oldVersion } = req.body
