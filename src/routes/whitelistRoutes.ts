@@ -35,10 +35,12 @@ router.get('/first/:hexId',
 )
 router.post('/sams-cv',
   uploadCSV,
+  multerErrorHandler,
   WhitelistController.getSamsCvByID
 )
 router.post('/sams-wl',
   uploadCSV,
+  multerErrorHandler,
   WhitelistController.getSamsByID
 )
 router.get('/last-version',
