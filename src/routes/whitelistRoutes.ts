@@ -20,9 +20,6 @@ router.post('/validate',
   WhitelistController.validateWLCLFiles
 )
 
-router.get('/last-version-cv',
-  WhitelistController.getLastVersionRecordsCV
-)
 router.get('/cv/:hexId',
   param('hexId').notEmpty().withMessage('Hex ID No Valido'),
   handleInputErrors,
@@ -42,6 +39,9 @@ router.post('/sams-wl',
   uploadCSV,
   multerErrorHandler,
   WhitelistController.getSamsByID
+)
+router.get('/last-version-cv',
+  WhitelistController.getLastVersionRecordsCV
 )
 router.get('/last-version',
   WhitelistController.getLastVersionRecords
