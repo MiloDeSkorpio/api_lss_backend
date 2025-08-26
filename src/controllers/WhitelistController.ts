@@ -216,7 +216,7 @@ const newVersion = (model) => async (req: Request, res: Response) => {
           console.error("Error en procesamiento en segundo plano:", error)
         }
       })
-      res.status(200).json({ message: "Procesando nueva version."})
+      res.status(200).json({ message: "Procesando nueva version." })
     }
   } catch (error) {
     res.status(500).json({ error: `${error.message}` })
@@ -258,6 +258,74 @@ const compareVersions = (model, baseOptions: any) => async (req: Request, res: R
   }
 }
 
+const getResume = (model) => async (req: Request, res: Response) => {
+  const versions = await getAllVersions(model)
+  const currentVersion = await getMaxVersion(model)
+  const currentVersionRecords = await getHighestVersionRecords(model)
+  const totalRecords = currentVersionRecords.length
+  const previusVersion = currentVersion - 1
+  const previusVersionRecords = await getAllRecordsBySelectedVersion(model, previusVersion)
+  let altasDataV = 0
+  let bajasDataV = 0
+  let cambiosDataV = 0
+
+  if (previusVersion < 1) {
+    altasDataV = currentVersionRecords.length
+  } else {
+    const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords)
+    const idsPrev = new Set(previusVersionRecords.map(r => r.SERIAL_HEX))
+    const idsCurr = new Set(currentVersionRecords.map(r => r.SERIAL_HEX))
+    const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.SERIAL_HEX))
+    const altas = currentVersionRecords.filter(r => !idsPrev.has(r.SERIAL_HEX))
+    bajasDataV = bajas.length
+    altasDataV = altas.length
+    cambiosDataV = cambiosValidos.length
+  }
+
+  const response = {
+    totalRecords,
+    currentVersion,
+    versions,
+    altasDataV,
+    bajasDataV,
+    cambiosDataV
+  } 
+  res.json(response)
+}
+
+const restoreWhitelistVersion = (model) => async (req: Request, res: Response) => {
+  try {
+    const { oldVersion } = req.body
+    if (!oldVersion) {
+      return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+    }
+
+    const dataVersion = await model.findOne({
+      where: { VERSION: oldVersion },
+      raw: true
+    })
+
+    if (!dataVersion) {
+      return res.status(404).json({ error: 'Versión no encontrada' })
+    }
+
+    const deletedCount = await model.destroy({
+      where: { VERSION: { [Op.gt]: oldVersion } }
+    })
+
+    res.json({
+      success: true,
+      message: `Restauración completada. ${deletedCount} registros eliminados.`
+    })
+  } catch (error) {
+    console.error(`Error en restoreWhitelistVersion:`, error)
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    })
+  }
+}
+
 export class WhitelistController {
   // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
@@ -285,141 +353,11 @@ export class WhitelistController {
     raw: true,
     where: { ESTADO: 'ACTIVO' }
   })
+  // Get resume
+  static getResumeCV = getResume(WhiteListCV)
+  static getResume = getResume(WhiteList)
 
-  static getResumeCV = async (req: Request, res: Response) => {
-    const versions = await getAllVersions(WhiteListCV)
-    const currentVersion = await getMaxVersion(WhiteListCV)
-    const currentVersionRecords = await getHighestVersionRecords(WhiteListCV)
-    const totalRecords = currentVersionRecords.length
-    const previusVersion = currentVersion - 1
-    const previusVersionRecords = await getAllRecordsBySelectedVersion(WhiteListCV, previusVersion)
-    let altasDataV = 0
-    let bajasDataV = 0
-    let cambiosDataV = 0
-
-    if (previusVersion < 1) {
-      altasDataV = currentVersionRecords.length
-    } else {
-      const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords)
-      const idsPrev = new Set(previusVersionRecords.map(r => r.SERIAL_HEX))
-      const idsCurr = new Set(currentVersionRecords.map(r => r.SERIAL_HEX))
-      const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.SERIAL_HEX))
-      const altas = currentVersionRecords.filter(r => !idsPrev.has(r.SERIAL_HEX))
-      bajasDataV = bajas.length
-      altasDataV = altas.length
-      cambiosDataV = cambiosValidos.length
-    }
-
-    const response = {
-      totalRecords,
-      currentVersion,
-      versions,
-      altasDataV,
-      bajasDataV,
-      cambiosDataV
-    }
-    res.json(response)
-  }
-  static getResume = async (req: Request, res: Response) => {
-    const versions = await getAllVersions(WhiteList)
-    const currentVersion = await getMaxVersion(WhiteList)
-    const currentVersionRecords = await getHighestVersionRecords(WhiteList)
-    const totalRecords = currentVersionRecords.length
-    const previusVersion = currentVersion - 1
-    const previusVersionRecords = await getAllRecordsBySelectedVersion(WhiteList, previusVersion)
-    let altasDataV = 0
-    let bajasDataV = 0
-    let cambiosDataV = 0
-
-    if (previusVersion < 1) {
-      altasDataV = currentVersionRecords.length
-    } else {
-      const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords)
-      const idsPrev = new Set(previusVersionRecords.map(r => r.SERIAL_HEX))
-      const idsCurr = new Set(currentVersionRecords.map(r => r.SERIAL_HEX))
-      const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.SERIAL_HEX))
-      const altas = currentVersionRecords.filter(r => !idsPrev.has(r.SERIAL_HEX))
-      bajasDataV = bajas.length
-      altasDataV = altas.length
-      cambiosDataV = cambiosValidos.length
-    }
-
-    const response = {
-      totalRecords,
-      currentVersion,
-      versions,
-      altasDataV,
-      bajasDataV,
-      cambiosDataV
-    }
-    res.json(response)
-  }
-  static restoreWhitelistCVVersion = async (req: Request, res: Response) => {
-    try {
-      const { oldVersion } = req.body
-
-      if (!oldVersion) {
-        return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
-      }
-
-      const dataVersion = await WhiteListCV.findOne({
-        where: { VERSION: oldVersion },
-        raw: true
-      })
-
-      if (!dataVersion) {
-        return res.status(404).json({ error: 'Versión no encontrada' })
-      }
-
-      const deletedCount = await WhiteListCV.destroy({
-        where: { VERSION: { [Op.gt]: oldVersion } }
-      })
-
-      res.json({
-        success: true,
-        message: `Restauración completada. ${deletedCount} registros eliminados.`
-      })
-
-    } catch (error) {
-      console.error('Error en restoreWhitelistCVVersion:', error)
-      res.status(500).json({
-        error: 'Error interno del servidor',
-        details: error.message
-      })
-    }
-  }
-  static restoreWhitelistVersion = async (req: Request, res: Response) => {
-    try {
-      const { oldVersion } = req.body
-
-      if (!oldVersion) {
-        return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
-      }
-
-      const dataVersion = await WhiteList.findOne({
-        where: { VERSION: oldVersion },
-        raw: true
-      })
-
-      if (!dataVersion) {
-        return res.status(404).json({ error: 'Versión no encontrada' })
-      }
-
-      const deletedCount = await WhiteList.destroy({
-        where: { VERSION: { [Op.gt]: oldVersion } }
-      })
-
-      res.json({
-        success: true,
-        message: `Restauración completada. ${deletedCount} registros eliminados.`
-      })
-
-    } catch (error) {
-      console.error('Error en restoreWhitelistVersion:', error)
-      res.status(500).json({
-        error: 'Error interno del servidor',
-        details: error.message
-      })
-    }
-  }
+  // Restore version
+  static restoreWhitelistCVVersion = restoreWhitelistVersion(WhiteListCV)
+  static restoreWhitelistVersion = restoreWhitelistVersion(WhiteList)
 }
