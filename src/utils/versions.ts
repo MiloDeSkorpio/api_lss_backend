@@ -91,7 +91,7 @@ export async function getHighestVersionRecords<T extends Model>(
   model: ModelStatic<T>,
   versionField: keyof InferAttributes<T> = 'VERSION' as keyof InferAttributes<T>,
   statusField: keyof InferAttributes<T> = 'ESTADO' as keyof InferAttributes<T>,
-): Promise<T[]> {
+): Promise<any[]> {
   try {
 
     const tableExists = await model.sequelize?.getQueryInterface().tableExists(model.tableName)
@@ -136,7 +136,7 @@ export async function getAllVersions<T extends Model>(model: ModelStatic<T>) {
 export async function getAllRecordsBySelectedVersion<T extends Model>(
   model: ModelStatic<T>,
   version: number
-): Promise<T[]> {
+): Promise<any[]> {
   const records = await model.findAll({
     where: {
       VERSION: version
