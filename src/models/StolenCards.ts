@@ -6,6 +6,7 @@ class StolenCards extends Model<StolenCardsAttributes> implements StolenCardsAtt
   declare card_type: string
   declare card_serial_number: string
   declare date: Date
+  declare estado: boolean
 }
 
 StolenCards.init(
@@ -22,6 +23,11 @@ StolenCards.init(
     date: {
       type: DataTypes.DATE,
       allowNull: false
+    },
+    estado: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'ACTIVO'
     }
   },
   {
@@ -31,3 +37,4 @@ StolenCards.init(
     timestamps: false
   }
 )
+export default StolenCards
