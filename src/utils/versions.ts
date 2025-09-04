@@ -1,4 +1,4 @@
-import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions, Op } from 'sequelize'
+import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions, Op, where } from 'sequelize'
 import { checkDuplicates, eliminarRegistros, validateChangeInRecord } from "./validation"
 
 export async function processVersionUpdate<T extends Model>(
@@ -144,4 +144,20 @@ export async function getAllRecordsBySelectedVersion<T extends Model>(
     raw: true
   })
   return records
+}
+
+export async function getStolenCards(model) {
+  const tableExists = await model.sequelize?.getQueryInterface().tableExists(model.tableName)
+
+    if (!tableExists) {
+      await model.sync()
+      return []
+    }
+  const stolenCards = await model.findAll({
+    where: {
+      estado: 'ACTIVO'
+    },
+    raw: true
+  })
+  return stolenCards
 }
