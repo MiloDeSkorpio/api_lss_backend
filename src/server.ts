@@ -3,6 +3,7 @@ import morgan from 'morgan'
 import cors from 'cors'
 import whiteListRoutes from './routes/whitelistRoutes'
 import samsRoutes from './routes/samsRoutes'
+import blackListRoutes from './routes/blacklistRoutes'
 import { connectDB } from './config/db'
 // Iniciar la conexion a la DB
 connectDB()
@@ -19,6 +20,7 @@ server.use(morgan('dev'))
 // Leer datos de formularios
 server.use(express.json({limit: '50mb'}))
 // Rutas
+server.use('/api/blacklist',blackListRoutes)
 server.use('/api/whitelist',whiteListRoutes)
 server.use('/api/sams',samsRoutes)
 
