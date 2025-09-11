@@ -1,5 +1,7 @@
 import { createHash } from "crypto"
 import { toInt } from "validator"
+import { HeaderValidationResult } from "../types"
+
 
 export function sonEquivalentesNum(dec: number, hex: string): boolean {
   const hexAsDec = parseInt(hex, 16)
@@ -49,7 +51,7 @@ export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]
   return { sinCambios, cambiosValidos }
 }
 export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField: string) {
-  
+
   const datosDuplicados = []
   // Filtrar las bajas que están en arrayInvalidData
   const datosValidos = arrayData.filter(row => {
@@ -66,8 +68,22 @@ export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField:
 
   return { datosValidos, datosDuplicados }
 }
-export function validateHeaders(headers: string[], required: string[]): string[] {
-  return required.filter(h => !headers.includes(h))
+export function validateHeaders(headers: string[], required: string[]): HeaderValidationResult {
+  const missing = required.filter(h => !headers.includes(h));
+  const extra = headers.filter(h => !required.includes(h));
+
+  return {
+    missing,
+    extra,
+    valid: missing.length === 0
+  }
+}
+export function validarHexCard(serial_card: string) {
+  const patron = /^0{8}[0-9A-Fa-f]{8}$/
+  if (!patron.test(serial_card)) {
+    throw new Error(`El Número de Serie: ${serial_card}, es invalido`)
+  }
+  return patron.test(serial_card)
 }
 export const normalizeText = (text: string): string => {
   return text
@@ -181,4 +197,51 @@ export function isSamInInventory(samsValid: any[], PROVIDER_CODES: any[], SERIAL
   return samsValid.some(sam =>
     sam.sam_id_hex === SERIAL_HEX && PROVIDER_CODES.includes(OPERATOR)
   )
+}
+export function isCardInStolenPack(stolenCards: any[], card_serial_number: string, estado: string) {
+  return stolenCards.some(card =>
+    card.card_serial_number === card_serial_number && estado === 'ACTIVO'
+  )
+}
+export function isCardTypeValid(cardType: string) {
+  if (cardType !== 'Calypso') {
+    throw new Error(
+      `El tipo de tarjeta: ${cardType} no es valido, se espera: Calypso`
+    )
+  }
+  return true
+}
+export function validatePriority(priorityValues: string[], priority: string) {
+  if (!priorityValues.includes(priority)) {
+    throw new Error(
+      `El Priority ${priority} no esta en el catalogo de valores de la red de transporte`
+    )
+  }
+  return true
+}
+export function validateBlacklistingDate(date: string): boolean {
+  const patron = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (!patron.test(date)) {
+    throw new Error(`La fecha ${date} no es una fecha valida`)
+  }
+
+  // Extraer componentes de la date
+  const [ano, mes, dia] = date.split('-').map(Number);
+
+  // Validar rangos básicos
+  if (mes < 1 || mes > 12) throw new Error(`El Mes en ${date} no es un mes valido`)
+  if (dia < 1 || dia > 31) throw new Error(`El Día en ${date} no es un día validos`)
+
+  // Validar meses con 30 días
+  if ([4, 6, 9, 11].includes(mes) && dia > 30) throw new Error(`El ${mes}° mes en ${date} no tiene más de 30 días`)
+
+  // Validar febrero y años bisiestos
+  if (mes === 2) {
+    const esBisiesto = (ano % 4 === 0 && ano % 100 !== 0) || (ano % 400 === 0)
+    if (esBisiesto && dia > 29) throw new Error(`El mes en febrero no tiene más de 29 días`)
+    if (!esBisiesto && dia > 28) throw new Error(`El mes en febrero no tiene más de 28 días`)
+  }
+
+  return true
 }
