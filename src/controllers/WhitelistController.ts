@@ -3,20 +3,13 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { validateFileName, validateInfoFiles, ValidationErrorItem } from '../utils/files'
+import { validateFileName, validateInfoFiles } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
 import { Op } from 'sequelize'
 import { validateChangeInRecord, validateHeaders } from '../utils/validation'
-
-const REQUIRED_HEADERS = ['SERIAL_DEC', 'SERIAL_HEX', 'CONFIG', 'OPERATOR', 'LOCATION_ID', 'ESTACION']
-const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
-
-// Interfaces
-interface MulterRequest extends Request {
-  files: Express.Multer.File[]
-}
+import { MulterRequest, PROVIDER_CODES, REQUIRED_HEADERS, ValidationErrorItem } from '../types'
 
 const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
   try {
@@ -97,7 +90,7 @@ const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
         .pipe(stripBomStream())
         .pipe(csv())
         .on('headers', (headers: string[]) => {
-          const missing = validateHeaders(headers, REQ_HEADER)
+          const { missing } = validateHeaders(headers, REQ_HEADER)
           if (missing.length > 0) {
             headersValid = false
             errorMessages.push({
@@ -289,7 +282,7 @@ const getResume = (model) => async (req: Request, res: Response) => {
     altasDataV,
     bajasDataV,
     cambiosDataV
-  } 
+  }
   res.json(response)
 }
 
