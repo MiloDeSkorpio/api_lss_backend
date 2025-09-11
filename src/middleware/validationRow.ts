@@ -1,16 +1,18 @@
-import { ValidationError, ValidationErrorItem } from "../utils/files";
-import { genSemoviId, isSamInInventory, isSamValid, normalizeText, validateHexValuesToDec, validateLocationId, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
+import { priorityValues, PROVIDER_CODES, ValidationErrorItem } from "../types";
+import { validateFileName } from "../utils/files";
+import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, normalizeText, validarHexCard, validateBlacklistingDate, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
 
 let ignoreWl = ['ESTACION']
 let ignoreIn = ['version_parametros', 'lock_index', 'fecha_produccion', 'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros', 'recibido_por', 'documento_soporte1', 'documento_soporte2', 'observaciones']
 
-export function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationErrorItem[], fileName: string, PROVIDER_CODES: string[], samsValid: any[]) {
+export async function validateRow(row: any, lineNumber: number, validData: any[], errors: ValidationErrorItem[], fileName: string) {
 
   if (fileName.includes('listablanca')) {
-    return validateListaBlanca(row, errors, fileName,PROVIDER_CODES, validData, samsValid, lineNumber)
+    return validateListaBlanca(row, errors, fileName, PROVIDER_CODES, validData, lineNumber)
   }
   else if (fileName.includes('listanegra')) {
 
+    return validateListaNegra(row, errors, fileName, validData, lineNumber,)
   }
   else if (fileName.includes('inventario')) {
     return validateInventorySams(row, errors, fileName, PROVIDER_CODES, validData)
@@ -26,14 +28,13 @@ async function validateListaBlanca(
   fileName: string,
   PROVIDER_CODES: string[],
   validData: any[],
-  samsValid: any[],
   line: number
 ) {
   try {
     validateRequiredFields(row, ignoreWl)
-    !isSamInInventory(samsValid, PROVIDER_CODES, row.SERIAL_HEX, row.OPERATOR)
+    // !isSamInInventory(samsValid, PROVIDER_CODES, row.SERIAL_HEX, row.OPERATOR)
     validateHexValuesToDec(row.SERIAL_DEC, row.SERIAL_HEX)
-    validateTypeSam(row.CONFIG,fileName)
+    validateTypeSam(row.CONFIG, fileName)
     if (row.ESTACION) {
       row.ESTACION = normalizeText(row.ESTACION)
     }
@@ -51,7 +52,40 @@ async function validateListaBlanca(
     })
   }
 }
+async function validateListaNegra(
+  row: any,
+  errors: ValidationErrorItem[],
+  fileName: string,
+  validData: any[],
+  line: number,
 
+) {
+  try {
+    if (fileName.includes('bajas')) {
+      validateFileName(fileName)
+      validateRequiredFields(row)
+      isCardTypeValid(row.card_type)
+      validarHexCard(row.card_serial_number)
+    } else {
+      validateFileName(fileName)
+      validateRequiredFields(row)
+      isCardTypeValid(row.card_type)
+      validarHexCard(row.card_serial_number)
+      validatePriority(priorityValues, row.priority)
+      validateBlacklistingDate(row.blacklisting_date)
+    }
+  } catch (error) {
+    errors.push({
+      message: `Linea: ${line} - ${error.message}`
+    })
+  }
+  if (errors.length === 0) {
+    validData.push({
+      ...row,
+      card_serial_number: row.card_serial_number
+    })
+  }
+}
 function validateInventorySams(
   row: any,
   errors: ValidationErrorItem[],
