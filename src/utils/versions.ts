@@ -1,5 +1,6 @@
-import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions, Op, where } from 'sequelize'
-import { checkDuplicates, eliminarRegistros, validateChangeInRecord } from "./validation"
+import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions } from 'sequelize'
+import { checkDuplicates, eliminarRegistros } from "./validation"
+import { catByOrg, FileData, FinalResult, ORG_MAPPING, OrgResults } from '../types'
 
 export async function processVersionUpdate<T extends Model>(
   currentVersionRecords: any[],
@@ -149,10 +150,10 @@ export async function getAllRecordsBySelectedVersion<T extends Model>(
 export async function getStolenCards(model) {
   const tableExists = await model.sequelize?.getQueryInterface().tableExists(model.tableName)
 
-    if (!tableExists) {
-      await model.sync()
-      return []
-    }
+  if (!tableExists) {
+    await model.sync()
+    return []
+  }
   const stolenCards = await model.findAll({
     where: {
       estado: 'ACTIVO'
@@ -160,4 +161,98 @@ export async function getStolenCards(model) {
     raw: true
   })
   return stolenCards
+}
+
+export async function getResumeOfValidationBL(
+  altasData: any[],
+  bajasData: any[],
+  currentRecords: any[],
+  invalidRecords: any[],
+  stolenCards: any[],
+  keyField: string
+): Promise<FinalResult> {
+  // Limpiar el objeto catByOrg antes de empezar
+  resetCatByOrg()
+
+  const altasFinal: any[] = []
+  const bajasFinal: any[] = []
+  const results: { [orgCode: string]: OrgResults }[] = []
+
+  // Procesar archivos de altas
+  processFiles(altasData, 'altas', altasFinal)
+
+  // Procesar archivos de bajas
+  processFiles(bajasData, 'bajas', bajasFinal)
+
+  // Procesar validaciones por organización
+  Object.entries(catByOrg).forEach(([orgCode, categorias]) => {
+    const orgResults = processOrganizationValidation(
+      orgCode as keyof typeof catByOrg,
+      categorias,
+      currentRecords,
+      invalidRecords,
+      stolenCards,
+      keyField
+    )
+    console.log(orgCode)
+    results.push({ [orgCode]: orgResults })
+  })
+
+  return { altasFinal, bajasFinal, results }
+}
+
+// Función auxiliar para procesar archivos
+function processFiles(files: FileData[], type: 'altas' | 'bajas', finalArray: any[]): void {
+  files.forEach(file => {
+    const orgCode = getOrgCodeFromFileName(file.fileName)
+    if (orgCode && catByOrg[orgCode]) {
+      catByOrg[orgCode][type].push(...file.validData)
+    }
+    finalArray.push(...file.validData)
+  })
+}
+
+// Función para obtener el código de organización del nombre de archivo
+function getOrgCodeFromFileName(fileName: string): keyof typeof catByOrg | null {
+  for (const [code, orgCode] of Object.entries(ORG_MAPPING)) {
+    if (fileName.includes(code)) {
+      return orgCode
+    }
+  }
+  return null
+}
+
+// Función para procesar validaciones de una organización
+function processOrganizationValidation(
+  orgCode: keyof typeof catByOrg,
+  categorias: { altas: any[]; bajas: any[] },
+  currentRecords: any[],
+  invalidRecords: any[],
+  stolenCards: any[],
+  keyField: string
+): OrgResults {
+  const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } =
+    checkDuplicates(currentRecords, categorias.altas, keyField)
+
+  const { datosValidos: bajasPreValidas, datosDuplicados: bajasInactivas } =
+    checkDuplicates(invalidRecords, categorias.bajas, keyField)
+
+  const { datosValidos: bajasValidas, datosDuplicados: bajasInStolen } =
+    checkDuplicates(stolenCards, bajasPreValidas, keyField)
+
+  return {
+    altasValidas,
+    altasDuplicadas,
+    bajasValidas,
+    bajasInactivas,
+    bajasInStolen
+  }
+}
+
+// Función para resetear el objeto catByOrg
+function resetCatByOrg(): void {
+  Object.keys(catByOrg).forEach(org => {
+    catByOrg[org as keyof typeof catByOrg].altas = []
+    catByOrg[org as keyof typeof catByOrg].bajas = []
+  })
 }
