@@ -1,0 +1,37 @@
+import BlackList from "../models/BlackList";
+import { MulterRequest, } from "../types";
+import { Response } from 'express'
+import { valdiateInfoBLFiles } from '../utils/files';
+
+
+const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: 'No se subieron archivos' })
+  }
+  const validationResult = await valdiateInfoBLFiles(req.files, model)
+  const data = await Promise.all(validationResult)
+  console.log(data)
+  const results = []
+  const hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
+  if (hasErrors) {
+    data.forEach(result => {
+      if (result.fileErrors.length > 0) {
+        results.push({
+          fileName: result.fileName,
+          fileErrors: result.fileErrors
+        })
+      }
+    })
+    const response = {
+      success: !hasErrors,
+      errorsFiles: results,
+    }
+    return res.status(400).json(response)
+  } else {
+    return res.status(200).json(data)
+  }
+}
+
+export class BlacklistController {
+  static validateBLFiles = validateFiles(BlackList)
+}
