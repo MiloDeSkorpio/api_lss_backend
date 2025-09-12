@@ -88,11 +88,11 @@ export async function getInvalidRecords(model) {
   }
 }
 
-export async function getHighestVersionRecords<T extends Model>(
-  model: ModelStatic<T>,
-  versionField: keyof InferAttributes<T> = 'VERSION' as keyof InferAttributes<T>,
-  statusField: keyof InferAttributes<T> = 'ESTADO' as keyof InferAttributes<T>,
-): Promise<any[]> {
+export async function getHighestVersionRecords(
+  model,
+  versionField,
+  statusField,
+){
   try {
 
     const tableExists = await model.sequelize?.getQueryInterface().tableExists(model.tableName)
@@ -111,7 +111,7 @@ export async function getHighestVersionRecords<T extends Model>(
       where: {
         [versionField]: maxVersion,
         [statusField]: 'ACTIVO'
-      } as WhereOptions<InferAttributes<T>>,
+      },
       raw: true
     })
 
