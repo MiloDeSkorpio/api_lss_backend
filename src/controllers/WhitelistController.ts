@@ -148,7 +148,7 @@ const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
 }
 
 const getLastVersionRecords = (model) => async (req: Request, res: Response) => {
-  const result = await getHighestVersionRecords(model)
+  const result = await getHighestVersionRecords(model,'VERSION','ESTADO')
   const transformedResult = result.map(record => {
     return Object.fromEntries(
       Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
@@ -165,7 +165,7 @@ const newVersion = (model) => async (req: Request, res: Response) => {
   const keyField = 'SERIAL_DEC'
 
   try {
-    const currentVersionRecords = await getHighestVersionRecords(model)
+    const currentVersionRecords = await getHighestVersionRecords(model,'VERSION','ESTADO')
     const currentVersion = await getMaxVersion(model)
 
     if (currentVersionRecords.length === 0) {
@@ -254,7 +254,7 @@ const compareVersions = (model, baseOptions: any) => async (req: Request, res: R
 const getResume = (model) => async (req: Request, res: Response) => {
   const versions = await getAllVersions(model)
   const currentVersion = await getMaxVersion(model)
-  const currentVersionRecords = await getHighestVersionRecords(model)
+  const currentVersionRecords = await getHighestVersionRecords(model,'VERSION','ESTADO')
   const totalRecords = currentVersionRecords.length
   const previusVersion = currentVersion - 1
   const previusVersionRecords = await getAllRecordsBySelectedVersion(model, previusVersion)
