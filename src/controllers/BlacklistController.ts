@@ -1,7 +1,7 @@
 import BlackList from "../models/BlackList";
 import { MulterRequest, } from "../types";
 import { Response, Request } from 'express'
-import { valdiateInfoBLFiles } from '../utils/files';
+import { validateInfoBLFiles } from '../utils/files';
 import { getHighestVersionRecords } from "../utils/versions";
 
 
@@ -9,9 +9,8 @@ const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No se subieron archivos' })
   }
-  const validationResult = await valdiateInfoBLFiles(req.files, model)
+  const validationResult = await validateInfoBLFiles(req.files, model)
   const data = await Promise.all(validationResult)
-  console.log(data)
   const results = []
   const hasErrors = data.some(result => result.fileErrors && result.fileErrors.length > 0)
   if (hasErrors) {
