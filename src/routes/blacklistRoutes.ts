@@ -1,7 +1,6 @@
 import { Router } from "express"
 import { BlacklistController } from "../controllers/BlacklistController"
 import { uploadCSV,uploadCSVs } from "../middleware/uploadFiles"
-import { body,param } from "express-validator"
 import { handleInputErrors, multerErrorHandler } from "../middleware"
 
 const router = Router()
@@ -12,5 +11,7 @@ router.post('/validate',
   multerErrorHandler,
   BlacklistController.validateBLFiles
 )
-
+router.get('/last-version',
+  BlacklistController.getLastVersionRecords
+)
 export default router
