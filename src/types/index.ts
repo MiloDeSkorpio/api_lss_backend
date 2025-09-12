@@ -16,7 +16,7 @@ export interface BlackListAttributtes {
   card_serial_number: string
   priority: string
   blacklisting_date: Date
-  version: number
+  version_ln: number
   estado: boolean
 }
 
