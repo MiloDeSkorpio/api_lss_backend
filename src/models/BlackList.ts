@@ -7,7 +7,7 @@ class BlackList extends Model<BlackListAttributtes> implements BlackListAttribut
   declare card_serial_number: string
   declare priority: string
   declare blacklisting_date: Date
-  declare version: number
+  declare version_ln: number
   declare estado: boolean
 }
 
@@ -30,7 +30,7 @@ BlackList.init(
       type: DataTypes.DATE,
       allowNull: false
     },
-    version: {
+    version_ln: {
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
