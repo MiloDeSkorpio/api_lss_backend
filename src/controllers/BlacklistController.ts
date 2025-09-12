@@ -1,7 +1,8 @@
 import BlackList from "../models/BlackList";
 import { MulterRequest, } from "../types";
-import { Response } from 'express'
+import { Response, Request } from 'express'
 import { valdiateInfoBLFiles } from '../utils/files';
+import { getHighestVersionRecords } from "../utils/versions";
 
 
 const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
@@ -31,7 +32,16 @@ const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
     return res.status(200).json(data)
   }
 }
-
+const getLastVersionRecords = (model) => async (req: Request, res: Response) => {
+  const result = await getHighestVersionRecords(model,'version_ln','estado')
+  const transformedResult = result.map(record => {
+    return Object.fromEntries(
+      Object.entries(record).map(([key, value]) => [key.toLowerCase(), value])
+    )
+  })
+  res.status(200).json(transformedResult)
+}
 export class BlacklistController {
   static validateBLFiles = validateFiles(BlackList)
+  static getLastVersionRecords = getLastVersionRecords(BlackList)
 }
