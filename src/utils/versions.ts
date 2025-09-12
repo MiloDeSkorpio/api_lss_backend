@@ -10,7 +10,7 @@ export async function processVersionUpdate<T extends Model>(
   cambiosData: any[],
   keyField: string
 ) {
-  const currentVersion = await getMaxVersion(model)
+  const currentVersion = await getMaxVersion(model,'VERSION')
   const newVersion = currentVersion + 1
   const finalRecords = eliminarRegistros(currentVersionRecords, bajasData, cambiosData)
   const newRecords = [...finalRecords, ...altasData]
@@ -65,9 +65,9 @@ export async function processVersionUpdate<T extends Model>(
 }
 
 
-export async function getMaxVersion(model) {
+export async function getMaxVersion(model,keyField) {
   try {
-    const maxVersion = await model.max('VERSION' as string)
+    const maxVersion = await model.max(keyField as string)
     return maxVersion || 0
   } catch (error) {
     throw new Error(`Error al consultar la version maxima en ${model.name}: `, error)
