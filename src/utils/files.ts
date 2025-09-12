@@ -203,7 +203,7 @@ export async function processSingleFile(
   })
 }
 
-export async function valdiateInfoBLFiles(files, Model) {
+export async function validateInfoBLFiles(files, Model) {
   const categorizedBl = categorizeBLFiles(files)
   let hasAltasErrors = false
   let hasBajasErrors = false
@@ -232,7 +232,7 @@ export async function valdiateInfoBLFiles(files, Model) {
       return results
     } else {
       const currentVersionRecords = await getHighestVersionRecords(Model,'version_ln','estado')
-      const currentVersion = await getMaxVersion(Model)
+      const currentVersion = await getMaxVersion(Model,'version_ln')
       const newVersion = currentVersion + 1
       const keyField = 'card_serial_number'
       const allInvalidRecords = await getInvalidRecords(Model)
@@ -296,7 +296,7 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
       return results
     } else {
       const currentVersionRecords = await getHighestVersionRecords(Model,'VERSION','ESTADO')
-      const currentVersion = await getMaxVersion(Model)
+      const currentVersion = await getMaxVersion(Model,'VERSION')
       const newVersion = currentVersion + 1
       const keyField = 'SERIAL_HEX'
       const allInvalidRecords = await getInvalidRecords(Model)
