@@ -166,7 +166,7 @@ const newVersion = (model) => async (req: Request, res: Response) => {
 
   try {
     const currentVersionRecords = await getHighestVersionRecords(model,'VERSION','ESTADO')
-    const currentVersion = await getMaxVersion(model)
+    const currentVersion = await getMaxVersion(model,'VERSION')
 
     if (currentVersionRecords.length === 0) {
       if (bajasValidas.length > 0 || cambiosValidos.length > 0) {
@@ -253,7 +253,7 @@ const compareVersions = (model, baseOptions: any) => async (req: Request, res: R
 
 const getResume = (model) => async (req: Request, res: Response) => {
   const versions = await getAllVersions(model)
-  const currentVersion = await getMaxVersion(model)
+  const currentVersion = await getMaxVersion(model,'VERSION')
   const currentVersionRecords = await getHighestVersionRecords(model,'VERSION','ESTADO')
   const totalRecords = currentVersionRecords.length
   const previusVersion = currentVersion - 1
