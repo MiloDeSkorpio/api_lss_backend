@@ -14,4 +14,7 @@ router.post('/validate',
 router.get('/last-version',
   BlacklistController.getLastVersionRecords
 )
+router.get('/resume-last-ver',
+  BlacklistController.getResumeLastVersion
+)
 export default router
