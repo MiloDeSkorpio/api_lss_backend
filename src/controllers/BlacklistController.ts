@@ -2,7 +2,7 @@ import BlackList from "../models/BlackList";
 import { MulterRequest, } from "../types";
 import { Response, Request } from 'express'
 import { validateInfoBLFiles } from '../utils/files';
-import { getHighestVersionRecords } from "../utils/versions";
+import { getHighestVersionRecords, getMaxVersion, resumeBlackList } from "../utils/versions";
 
 
 const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
@@ -40,7 +40,12 @@ const getLastVersionRecords = (model) => async (req: Request, res: Response) => 
   })
   res.status(200).json(transformedResult)
 }
+const getResumeLastVersion = (model) => async (req: Request, res: Response) => {
+  const result = await resumeBlackList(model)
+  res.status(200).json(result)
+}
 export class BlacklistController {
   static validateBLFiles = validateFiles(BlackList)
   static getLastVersionRecords = getLastVersionRecords(BlackList)
+  static getResumeLastVersion = getResumeLastVersion(BlackList)
 }
