@@ -10,7 +10,7 @@ export async function processVersionUpdate<T extends Model>(
   cambiosData: any[],
   keyField: string
 ) {
-  const currentVersion = await getMaxVersion(model,'VERSION')
+  const currentVersion = await getMaxVersion(model, 'VERSION')
   const newVersion = currentVersion + 1
   const finalRecords = eliminarRegistros(currentVersionRecords, bajasData, cambiosData)
   const newRecords = [...finalRecords, ...altasData]
@@ -65,7 +65,7 @@ export async function processVersionUpdate<T extends Model>(
 }
 
 
-export async function getMaxVersion(model,keyField) {
+export async function getMaxVersion(model, keyField) {
   try {
     const maxVersion = await model.max(keyField as string)
     return maxVersion || 0
@@ -92,7 +92,7 @@ export async function getHighestVersionRecords(
   model,
   versionField,
   statusField,
-){
+) {
   try {
 
     const tableExists = await model.sequelize?.getQueryInterface().tableExists(model.tableName)
@@ -255,4 +255,19 @@ function resetCatByOrg(): void {
     catByOrg[org as keyof typeof catByOrg].altas = []
     catByOrg[org as keyof typeof catByOrg].bajas = []
   })
+}
+export async function getTotalRecords(model, versionField, statusField) {
+  const maxVersion = await model.max(versionField as number)
+  const total = await model.count({
+    where: {
+      [versionField]: maxVersion,
+      [statusField]: 'ACTIVO'
+    }
+  })
+  return total
+}
+export async function resumeBlackList(model) {
+  const totalRecords = await getTotalRecords(model, 'version_ln', 'estado')
+  const lastVersion = await getMaxVersion(model, 'version_ln')
+  return { totalRecords, lastVersion }
 }
