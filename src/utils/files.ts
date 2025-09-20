@@ -237,9 +237,10 @@ export async function validateInfoBLFiles(files, Model) {
       const keyField = 'card_serial_number'
       const allInvalidRecords = await getInvalidRecords(Model)
       const stolenCards = await getStolenCards(StolenCards)
-      const {results: resultsByOrg, altasFinal,bajasFinal} = await getResumeOfValidationBL(altasData,bajasData,currentVersionRecords,allInvalidRecords,stolenCards, keyField)
+      const { results: resultsByOrg, altasFinal, bajasFinal } = await getResumeOfValidationBL(altasData,bajasData,currentVersionRecords,allInvalidRecords,stolenCards, keyField)
       
       results.push({
+        success: true,
         newVersion,
         currentVersion,
         currentVersionCount: currentVersionRecords.length,
