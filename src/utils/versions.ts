@@ -1,4 +1,4 @@
-import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions } from 'sequelize'
+import { Model, ModelStatic, Sequelize } from 'sequelize'
 import { checkDuplicates, eliminarRegistros } from "./validation"
 import { catByOrg, FileData, FinalResult, ORG_MAPPING, OrgResults } from '../types'
 
@@ -101,7 +101,7 @@ export async function getHighestVersionRecords(
       await model.sync()
       return []
     }
-    const maxVersion = await model.max(versionField as string)
+    const maxVersion = await model.max(versionField as number)
 
     if (maxVersion === null || maxVersion === undefined) {
       return []
