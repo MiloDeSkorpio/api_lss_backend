@@ -1,4 +1,4 @@
-import { Model, ModelStatic, Sequelize } from 'sequelize'
+import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions } from 'sequelize'
 import { checkDuplicates, eliminarRegistros } from "./validation"
 import { catByOrg, FileData, FinalResult, ORG_MAPPING, OrgResults } from '../types'
 
@@ -19,13 +19,17 @@ export async function processVersionUpdate<T extends Model>(
   try {
     // 1. Marcar bajas con nueva versión e INACTIVO
     if (bajasData.length > 0) {
-      await model.bulkCreate(
-        bajasData.map(item => ({
-          ...item,
-          ESTADO: 'INACTIVO',
-          VERSION: newVersion
-        })),
-        { transaction }
+      const serialesBajas = bajasData.map(item => item.keyField)
+      await model.update(
+        { ESTADO: 'INACTIVO', VERSION: newVersion },
+        {
+          where: {
+            SERIAL_DEC: serialesBajas,
+            ESTADO: 'ACTIVO',
+            VERSION: currentVersion
+          } as WhereOptions<InferAttributes<T>>,
+          transaction
+        }
       )
     }
 
@@ -33,11 +37,14 @@ export async function processVersionUpdate<T extends Model>(
     if (cambiosData.length > 0) {
       await Promise.all(
         cambiosData.map(item =>
-          model.upsert(
+          model.update(
             { ...item, VERSION: newVersion },
             {
-              transaction,
-              conflictFields: [keyField] // Campo único para determinar si existe
+              where: {
+                SERIAL_DEC: item.keyField,
+                VERSION: currentVersion
+              },
+              transaction
             }
           )
         )
