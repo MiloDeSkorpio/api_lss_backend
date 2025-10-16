@@ -57,9 +57,9 @@ export interface CategorizedBLFiles {
   bajas: Express.Multer.File[]
 }
 export interface HeaderValidationResult {
-  missing: string[];    // Headers requeridos que faltan
-  extra: string[];      // Headers presentes pero no requeridos
-  valid: boolean;       // Si todos los requeridos están presentes
+  missing: string[]    // Headers requeridos que faltan
+  extra: string[]      // Headers presentes pero no requeridos
+  valid: boolean       // Si todos los requeridos están presentes
 }
 
 export const catByOrg = {
@@ -90,28 +90,30 @@ export const catByOrg = {
 }
 
 export interface FileData {
-  fileName: string;
+  fileName: string
   errors: any
-  validData: any[];
+  validData: any[]
 }
 
 export interface ValidationResult {
-  datosValidos: any[];
-  datosDuplicados: any[];
+  datosValidos: any[]
+  datosDuplicados: any[]
 }
 
 export interface OrgResults {
-  altasValidas: any[];
-  altasDuplicadas: any[];
-  bajasValidas: any[];
-  bajasInactivas: any[];
-  bajasInStolen: any[];
+  altasValidas: any[]
+  altasDuplicadas: any[]
+  altasInactivas: any[]
+  bajasValidas: any[]
+  bajasInactivas: any[]
+  bajasInStolen: any[]
+  bajasSinRegistro: any[]
 }
 
 export interface FinalResult {
-  altasFinal: any[];
-  bajasFinal: any[];
-  results: { [orgCode: string]: OrgResults }[];
+  altasFinal: any[]
+  bajasFinal: any[]
+  results: { [orgCode: string]: OrgResults }[]
 }
 
 // Mapeo de códigos a organizaciones para evitar repetir condiciones
@@ -122,4 +124,4 @@ export const ORG_MAPPING: { [key: string]: keyof typeof catByOrg } = {
   '_32_': 'stc',
   '_46_': 'rtp',
   '_64_': 'sem'
-};
+}
