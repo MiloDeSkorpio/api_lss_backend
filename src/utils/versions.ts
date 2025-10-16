@@ -1,5 +1,5 @@
 import { InferAttributes, Model, ModelStatic, Sequelize, WhereOptions } from 'sequelize'
-import { checkDuplicates, eliminarRegistros } from "./validation"
+import { checkDuplicates, eliminarRegistros, verifyIfExistRecord } from "./validation"
 import { catByOrg, FileData, FinalResult, ORG_MAPPING, OrgResults } from '../types'
 
 export async function processVersionUpdate<T extends Model>(
@@ -178,18 +178,20 @@ export async function getResumeOfValidationBL(
   stolenCards: any[],
   keyField: string
 ): Promise<FinalResult> {
-  // Limpiar el objeto catByOrg antes de empezar
+
   resetCatByOrg()
 
+  const altasFiltered: any[] = []
+  const bajasFiltered: any[] = []
   const altasFinal: any[] = []
   const bajasFinal: any[] = []
   const results: { [orgCode: string]: OrgResults }[] = []
 
   // Procesar archivos de altas
-  processFiles(altasData, 'altas', altasFinal)
+  processFiles(altasData, 'altas', altasFiltered)
 
   // Procesar archivos de bajas
-  processFiles(bajasData, 'bajas', bajasFinal)
+  processFiles(bajasData, 'bajas', bajasFiltered)
 
   // Procesar validaciones por organización
   Object.entries(catByOrg).forEach(([orgCode, categorias]) => {
@@ -201,8 +203,19 @@ export async function getResumeOfValidationBL(
       stolenCards,
       keyField
     )
-    console.log(orgCode)
+
     results.push({ [orgCode]: orgResults })
+  })
+  results.forEach((orgObject) => {
+    const [key, org] = Object.entries(orgObject)[0]
+
+    if (org.altasValidas?.length) {
+      altasFinal.push(...org.altasValidas)
+    }
+
+    if (org.bajasValidas?.length) {
+      bajasFinal.push(...org.bajasValidas)
+    }
   })
 
   return { altasFinal, bajasFinal, results }
@@ -238,21 +251,33 @@ function processOrganizationValidation(
   stolenCards: any[],
   keyField: string
 ): OrgResults {
-  const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } =
+  //Procesar Altas
+  // 
+  const { datosValidos: altasPreValidas, datosDuplicados: altasDuplicadas } =
     checkDuplicates(currentRecords, categorias.altas, keyField)
+  // 
+  const { datosValidos: altasValidas, datosDuplicados: altasInactivas } =
+    checkDuplicates(invalidRecords, altasPreValidas, keyField)
 
   const { datosValidos: bajasPreValidas, datosDuplicados: bajasInactivas } =
     checkDuplicates(invalidRecords, categorias.bajas, keyField)
 
-  const { datosValidos: bajasValidas, datosDuplicados: bajasInStolen } =
-    checkDuplicates(stolenCards, bajasPreValidas, keyField)
+  const { datosExistentes: bajasValidas, notFoundRecords: bajasSinRegistro } =
+    verifyIfExistRecord(currentRecords, bajasPreValidas, keyField)
+
+  // Si el proceso genera muchos rangos revertir por checkDuplicates a modo de retirar las bajas
+  const { datosExistentes: bajasInStolen, notFoundRecords: bajasStolenValidas } =
+    verifyIfExistRecord(stolenCards, bajasPreValidas, keyField)
+
 
   return {
     altasValidas,
     altasDuplicadas,
+    altasInactivas,
     bajasValidas,
     bajasInactivas,
-    bajasInStolen
+    bajasInStolen,
+    bajasSinRegistro
   }
 }
 
