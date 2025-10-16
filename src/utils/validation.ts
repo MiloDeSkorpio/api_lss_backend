@@ -50,6 +50,20 @@ export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]
 
   return { sinCambios, cambiosValidos }
 }
+export function verifyIfExistRecord(arrayCompare: any[], arrayData: any[], keyField: string) {
+  const notFoundRecords = []
+  const datosExistentes = arrayData.filter(row => {
+    const esExistente = arrayCompare.some(invalidRow =>
+      invalidRow[keyField] === row[keyField]
+    )
+    if (!esExistente) {
+      notFoundRecords.push(row)
+      return false
+    }
+    return true
+  })
+  return { datosExistentes, notFoundRecords }
+}
 export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField: string) {
 
   const datosDuplicados = []
