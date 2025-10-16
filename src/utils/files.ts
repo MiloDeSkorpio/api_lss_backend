@@ -5,7 +5,7 @@ import SamsSitp from '../models/SamsSitp'
 import StolenCards from '../models/StolenCards'
 import { checkDuplicates, eliminarRegistros, getAllValidSams, validateChangeInRecord, validateHeaders } from "./validation"
 import { validateRow } from '../middleware/validationRow'
-import { getHighestVersionRecords, getInvalidRecords, getMaxVersion, getResumeOfValidationBL, getStolenCards } from './versions'
+import { getHighestVersionRecords, getInvalidRecords, getMaxVersion, getResumeOfValidationBL, getStolenCards, getTotalRecords } from './versions'
 import { CategorizedBLFiles, CategorizedFiles, ValidationErrorItem, catByOrg, categorized, categorizedBl, headers_downs_blacklist, headers_ups_blacklist } from '../types'
 
 export const validateFileName = (filename: string): boolean => {
@@ -39,7 +39,7 @@ export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFil
   return categorized
 }
 export const categorizeBLFiles = (files: Express.Multer.File[]): CategorizedBLFiles => {
-  const { altas, bajas} = categorizedBl
+  const { altas, bajas } = categorizedBl
 
   files.forEach((file) => {
     if (file.originalname.includes('altas')) altas.push(file)
@@ -100,7 +100,7 @@ export async function processSingleBLFile(
     const errorMessages: ValidationErrorItem[] = []
     const fileValidData: any[] = []
     let headersValid = true
-    
+
     if (validateFileName(file.originalname)) {
       fs.createReadStream(file.path)
         .pipe(stripBomStream())
@@ -231,19 +231,21 @@ export async function validateInfoBLFiles(files, Model) {
       })
       return results
     } else {
-      const currentVersionRecords = await getHighestVersionRecords(Model,'version_ln','estado')
-      const currentVersion = await getMaxVersion(Model,'version_ln')
+      const currentVersionRecords = await getHighestVersionRecords(Model, 'version_ln', 'estado')
+      const currentVersion = await getMaxVersion(Model, 'version_ln')
       const newVersion = currentVersion + 1
       const keyField = 'card_serial_number'
       const allInvalidRecords = await getInvalidRecords(Model)
       const stolenCards = await getStolenCards(StolenCards)
-      const { results: resultsByOrg, altasFinal, bajasFinal } = await getResumeOfValidationBL(altasData,bajasData,currentVersionRecords,allInvalidRecords,stolenCards, keyField)
-      
+      const currentVersionCount = await getTotalRecords(Model, 'version_ln', 'estado')
+      const { results: resultsByOrg, altasFinal, bajasFinal } = await getResumeOfValidationBL(altasData, bajasData, currentVersionRecords, allInvalidRecords, stolenCards, keyField)
+      const newVersionRecordsCount = currentVersionRecords.length + altasFinal.length - bajasFinal.length
       results.push({
         success: true,
         newVersion,
         currentVersion,
-        currentVersionCount: currentVersionRecords.length,
+        currentVersionCount,
+        newVersionRecordsCount,
         altasFinal,
         bajasFinal,
         resultsByOrg
@@ -253,7 +255,6 @@ export async function validateInfoBLFiles(files, Model) {
   } catch (error) {
     console.log(error)
   }
-
 }
 
 
@@ -296,8 +297,8 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
       })
       return results
     } else {
-      const currentVersionRecords = await getHighestVersionRecords(Model,'VERSION','ESTADO')
-      const currentVersion = await getMaxVersion(Model,'VERSION')
+      const currentVersionRecords = await getHighestVersionRecords(Model, 'VERSION', 'ESTADO')
+      const currentVersion = await getMaxVersion(Model, 'VERSION')
       const newVersion = currentVersion + 1
       const keyField = 'SERIAL_HEX'
       const allInvalidRecords = await getInvalidRecords(Model)
