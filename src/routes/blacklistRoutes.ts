@@ -11,6 +11,10 @@ router.post('/validate',
   multerErrorHandler,
   BlacklistController.validateBLFiles
 )
+router.post('/new-version',
+  handleInputErrors,
+  BlacklistController.newVersion
+)
 router.get('/last-version',
   BlacklistController.getLastVersionRecords
 )
