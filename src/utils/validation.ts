@@ -18,6 +18,16 @@ export function eliminarRegistros<T extends { SERIAL_HEX: string }>(
     )
   )
 }
+export function eliminarRegistrosLN<T extends { card_serial_number: string }>(
+  original: T[],
+  ...arraysAEliminar: T[][]
+): T[] {
+  return original.filter(row =>
+    !arraysAEliminar.some(array =>
+      array.some(rowAEliminar => row.card_serial_number === rowAEliminar.card_serial_number)
+    )
+  )
+}
 export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]) {
   const sinCambios = []
   const cambiosValidos = []
