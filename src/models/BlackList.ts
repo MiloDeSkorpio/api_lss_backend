@@ -8,7 +8,7 @@ class BlackList extends Model<BlackListAttributtes> implements BlackListAttribut
   declare priority: string
   declare blacklisting_date: Date
   declare version_ln: number
-  declare estado: boolean
+  declare estado: string
 }
 
 BlackList.init(
@@ -36,9 +36,9 @@ BlackList.init(
       primaryKey: true
     },
     estado: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: 'ACTIVO',
       primaryKey: true
     }
   },

@@ -6,7 +6,7 @@ class StolenCards extends Model<StolenCardsAttributes> implements StolenCardsAtt
   declare card_type: string
   declare card_serial_number: string
   declare date: Date
-  declare estado: boolean
+  declare estado: string
 }
 
 StolenCards.init(

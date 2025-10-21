@@ -8,7 +8,7 @@ export interface StolenCardsAttributes {
   card_type: string
   card_serial_number: string
   date: Date
-  estado: boolean
+  estado: string
 }
 
 export interface BlackListAttributtes {
@@ -17,7 +17,7 @@ export interface BlackListAttributtes {
   priority: string
   blacklisting_date: Date
   version_ln: number
-  estado: boolean
+  estado: string
 }
 
 export interface CategorizedFiles {
