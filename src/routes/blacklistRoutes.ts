@@ -21,4 +21,7 @@ router.get('/last-version',
 router.get('/resume-last-ver',
   BlacklistController.getResumeLastVersion
 )
+router.get('/find-card',
+  BlacklistController.getCardById
+)
 export default router
