@@ -4,6 +4,8 @@ import { Response, Request } from 'express'
 import { validateInfoBLFiles } from '../utils/files';
 import { getHighestVersionRecords, getMaxVersion, resumeBlackList } from "../utils/versions";
 import { eliminarRegistrosLN } from "../utils/validation";
+import { searchByHexID } from "../utils/buscador";
+import { Model, ModelStatic } from "sequelize";
 
 
 
@@ -116,7 +118,7 @@ const newVersionLN = (model) => async (req: Request, res: Response) => {
         }
 
         await transaction.commit()
-        return res.status(200).json({success: true})
+        return res.status(200).json({ success: true })
       } catch (error) {
         await transaction.rollback()
         console.log(error)
@@ -127,9 +129,39 @@ const newVersionLN = (model) => async (req: Request, res: Response) => {
     console.log("Error de inserción en segundo plano:", error.message)
   }
 }
+const getCardById = <T extends Model>(model: ModelStatic<T>) =>
+  async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const hexId = req.query.hexId as string
+      if (!hexId) {
+        return res.status(400).json({ success: false, message: "No hay hexId válido" })
+      }
+
+      const normalizedHex = hexId.padStart(16, '0')
+      const keyField = "card_serial_number"
+
+      const result = await searchByHexID(normalizedHex, model, keyField)
+
+      if (!result) {
+        return res.status(404).json({ success: false, message: "Tarjeta no encontrada" })
+      }
+
+      return res.status(200).json({ success: true, data: result })
+
+    } catch (error) {
+      console.error("Error in getCardById:", error)
+      return res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+      })
+    }
+  }
+
+
 export class BlacklistController {
   static newVersion = newVersionLN(BlackList)
   static validateBLFiles = validateFiles(BlackList)
   static getLastVersionRecords = getLastVersionRecords(BlackList)
   static getResumeLastVersion = getResumeLastVersion(BlackList)
+  static getCardById = getCardById(BlackList)
 }
