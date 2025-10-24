@@ -55,14 +55,14 @@ const getSamById = (model: any) => async (req: Request, res: Response) => {
     if (!hexId) {
       return res.status(400).send({ message: "hexId is required" })
     }
-
-    const result = await searchByHexID(hexId, model)
+    const keyField = 'SERIAL_HEX'
+    const result = await searchByHexID(hexId, model, keyField)
 
     if (!result) {
       return res.status(404).send({ message: "Record not found" })
     }
 
-    return res.status(200).send(result)
+    return res.status(200).json({ success: true, data: result })
 
   } catch (error) {
     console.error("Error in getSamById:", error)
