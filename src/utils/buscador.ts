@@ -1,14 +1,13 @@
 import { InferAttributes, Model, ModelStatic, Op, WhereOptions } from "sequelize"
 
-export async function searchByHexID<T extends Model>(hexID: string, model: ModelStatic<T>) {
+export async function searchByHexID<T extends Model>(hexID: string, model: ModelStatic<T>, keyField: string) {
   const result = await model.findOne({
     where: {
-      SERIAL_HEX: {
+      [keyField]: {
         [Op.eq]: hexID
       }
     } as WhereOptions<InferAttributes<T>>,
     raw: true
   })
-
   return result
 } 
