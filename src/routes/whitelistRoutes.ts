@@ -19,6 +19,18 @@ router.post('/validate',
   multerErrorHandler,
   WhitelistController.validateWLCLFiles
 )
+router.post('/validate-list-cv',
+  uploadCSV,
+  handleInputErrors,
+  multerErrorHandler,
+  WhitelistController.validateWLCVList
+)
+router.post('/validate-list-cl',
+  uploadCSV,
+  handleInputErrors,
+  multerErrorHandler,
+  WhitelistController.validateWLCLList
+)
 
 router.get('/cv/:hexId',
   param('hexId').notEmpty().withMessage('Hex ID No Valido'),
