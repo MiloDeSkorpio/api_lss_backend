@@ -41,7 +41,7 @@ export class SamsController {
     const file = req.file
     try {
 
-      const fileData = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
+      const fileData = await processSingleFile(file, REQUIRED_HEADERS)
 
       const tableExists = await SamsSitp.sequelize.getQueryInterface().tableExists(SamsSitp.tableName)
 
