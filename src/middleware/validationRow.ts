@@ -1,6 +1,6 @@
 import { priorityValues, PROVIDER_CODES, ValidationErrorItem } from "../types";
 import { validateFileName } from "../utils/files";
-import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, normalizeText, validarHexCard, validateBlacklistingDate, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
+import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
 
 let ignoreWl = ['ESTACION']
 let ignoreIn = ['version_parametros', 'lock_index', 'fecha_produccion', 'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros', 'recibido_por', 'documento_soporte1', 'documento_soporte2', 'observaciones']
@@ -11,11 +11,13 @@ export async function validateRow(row: any, lineNumber: number, validData: any[]
     return validateListaBlanca(row, errors, fileName, PROVIDER_CODES, validData, lineNumber)
   }
   else if (fileName.includes('listanegra')) {
-
     return validateListaNegra(row, errors, fileName, validData, lineNumber,)
   }
   else if (fileName.includes('inventario')) {
     return validateInventorySams(row, errors, fileName, PROVIDER_CODES, validData)
+  }
+  else if (fileName.includes('buscar')) {
+    return validateSearch(row, errors, fileName, validData,lineNumber)
   }
   return false
 
@@ -58,7 +60,6 @@ async function validateListaNegra(
   fileName: string,
   validData: any[],
   line: number,
-
 ) {
   try {
     if (fileName.includes('bajas')) {
@@ -83,6 +84,28 @@ async function validateListaNegra(
     validData.push({
       ...row,
       card_serial_number: row.card_serial_number
+    })
+  }
+}
+async function validateSearch(
+  row: any,
+  errors: ValidationErrorItem[],
+  fileName: string,
+  validData: any[],
+  line: number,
+) {
+  try {
+    validateRequiredFields(row)
+    validarSerialHex(row.serial_hex)
+  } catch (error) {
+    errors.push({
+      message: `Linea: ${line} - ${error.message}`
+    })
+  }
+  if (errors.length === 0) {
+    validData.push({
+      ...row,
+      serial_hex: row.serial_hex
     })
   }
 }
