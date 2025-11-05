@@ -3,7 +3,7 @@ import csv from 'csv-parser'
 import stripBomStream from 'strip-bom-stream'
 import type { Request, Response } from 'express'
 import WhiteListCV from '../models/WhiteListCV'
-import { validateFileName, validateInfoFiles } from '../utils/files'
+import { validateFileName, validateInfoFiles, validateSearchFile } from '../utils/files'
 import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, processVersionUpdate } from '../utils/versions'
 import WhiteList from '../models/WhiteList'
 import { searchByHexID } from '../utils/buscador'
@@ -47,7 +47,41 @@ const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
     })
   }
 }
+const validateSearchList = (model) => async (req: MulterRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se subio archivo' })
+    }
+    const file = req.file
+    const header = ['serial_hex']
+    const { errors, validData} = await validateSearchFile(file,model,header)
+    const hasErrors = errors.some(result => result )
+    const results = []
+    if(hasErrors) {
+        errors.forEach(result => {
+        if (result) {
+          results.push({
+            fileName: result,
+            fileErrors: result
+          })
+        }
+      })
+      const response = {
+        success: !hasErrors,
+        errorsFiles: results,
+      }
+      return res.status(400).json(response)
+    } else {
+      return res.status(200).json(validData)
+    }
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    })
+  }
 
+}
 const getSamById = (model: any) => async (req: Request, res: Response) => {
   try {
     const { hexId } = req.params
@@ -323,6 +357,9 @@ export class WhitelistController {
   // Validation files
   static validateWLCVFiles = validateFiles(WhiteListCV)
   static validateWLCLFiles = validateFiles(WhiteList)
+  // Validation Search List
+  static validateWLCVList = validateSearchList(WhiteListCV)
+  static validateWLCLList = validateSearchList(WhiteList)
   // Get by SERIAL_HEX
   static getSamCvByID = getSamById(WhiteListCV)
   static getSamByID = getSamById(WhiteList)
