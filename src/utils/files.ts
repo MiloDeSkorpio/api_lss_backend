@@ -28,7 +28,6 @@ export const validateFileName = (filename: string): boolean => {
     return false
   }
 }
-
 export const categorizeAllFiles = (files: Express.Multer.File[]): CategorizedFiles => {
   files?.forEach((file) => {
     if (file.originalname.includes('altas')) categorized.altasFiles.push(file)
@@ -47,7 +46,6 @@ export const categorizeBLFiles = (files: Express.Multer.File[]): CategorizedBLFi
   })
   return categorizedBl
 }
-
 export const processFileBLGroup = async (files: Express.Multer.File[]) => {
   const processingPromises = files.map(async (file) => {
     if (file.originalname.includes('bajas')) {
@@ -78,7 +76,7 @@ export const processFileBLGroup = async (files: Express.Multer.File[]) => {
 export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) => {
   const processingPromises = files.map(async (file) => {
     try {
-      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, PROVIDER_CODES)
+      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS)
       return { fileName, errors, validData }
     } catch (error) {
       return {
@@ -90,7 +88,6 @@ export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HE
   // Esperar a que todos los archivos se procesen
   return await Promise.all(processingPromises)
 }
-
 export async function processSingleBLFile(
   file: Express.Multer.File,
   reqHeaders: string[]
@@ -149,8 +146,7 @@ export async function processSingleBLFile(
 }
 export async function processSingleFile(
   file: Express.Multer.File,
-  REQUIRED_HEADERS: string[],
-  PROVIDER_CODES: string[]
+  REQUIRED_HEADERS: string[]
 ): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
     let lineNumber = 0
@@ -202,7 +198,6 @@ export async function processSingleFile(
       })
   })
 }
-
 export async function validateInfoBLFiles(files, Model) {
   const categorizedBl = categorizeBLFiles(files)
   let hasAltasErrors = false
@@ -256,8 +251,6 @@ export async function validateInfoBLFiles(files, Model) {
     console.log(error)
   }
 }
-
-
 export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) {
 
   const categorizeFiles = categorizeAllFiles(files)
@@ -344,4 +337,12 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
     console.log('Error al validar archivos:', error)
   }
 
+}
+export async function validateSearchFile(file, Model, REQ_HEADER: string[]) {
+  try {
+    const { errors, validData } = await processSingleFile(file, REQ_HEADER )
+    return { errors, validData }
+  } catch (error) {
+    console.log('Error al validar',error)
+  }
 }
