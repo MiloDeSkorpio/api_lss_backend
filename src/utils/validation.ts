@@ -109,6 +109,13 @@ export function validarHexCard(serial_card: string) {
   }
   return patron.test(serial_card)
 }
+export function validarSerialHex(serial_hex: string) {
+  const patron = /^[0-9A-Fa-f]{8}$/
+  if (!patron.test(serial_hex)) {
+    throw new Error(`El Número de Serie: ${serial_hex}, es invalido`)
+  }
+  return patron.test(serial_hex)
+}
 export const normalizeText = (text: string): string => {
   return text
     .normalize("NFD")
