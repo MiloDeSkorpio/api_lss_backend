@@ -19,12 +19,12 @@ export async function processVersionUpdate<T extends Model>(
   try {
     // 1. Marcar bajas con nueva versión e INACTIVO
     if (bajasData.length > 0) {
-      const serialesBajas = bajasData.map(item => item.keyField)
+      const serialesBajas = bajasData.map(item => item.SERIAL_DEC)
       await model.update(
         { ESTADO: 'INACTIVO', VERSION: newVersion },
         {
           where: {
-            SERIAL_DEC: serialesBajas,
+            [keyField]: serialesBajas,
             ESTADO: 'ACTIVO',
             VERSION: currentVersion
           } as WhereOptions<InferAttributes<T>>,
@@ -41,7 +41,7 @@ export async function processVersionUpdate<T extends Model>(
             { ...item, VERSION: newVersion },
             {
               where: {
-                SERIAL_DEC: item.keyField,
+                [keyField]: item.SERIAL_DEC,
                 VERSION: currentVersion
               },
               transaction
