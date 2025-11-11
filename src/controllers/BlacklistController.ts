@@ -1,13 +1,14 @@
+import fs from 'fs'
+import csv from 'csv-parser'
 import BlackList from "../models/BlackList";
-import { MulterRequest, } from "../types";
+import { MulterRequest, ValidationErrorItem, } from "../types";
 import { Response, Request } from 'express'
-import { validateInfoBLFiles } from '../utils/files';
+import { validateFileName, validateInfoBLFiles } from '../utils/files';
 import { getHighestVersionRecords, getMaxVersion, resumeBlackList } from "../utils/versions";
-import { eliminarRegistrosLN } from "../utils/validation";
+import { eliminarRegistrosLN, validateHeaders } from "../utils/validation";
 import { searchByHexID } from "../utils/buscador";
 import { Model, ModelStatic } from "sequelize";
-
-
+import stripBomStream from "strip-bom-stream";
 
 const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
   if (!req.files || req.files.length === 0) {
@@ -155,13 +156,84 @@ const getCardById = <T extends Model>(model: ModelStatic<T>) =>
         message: "Error interno del servidor",
       })
     }
+}
+const getCardsById = (model) => async (req: MulterRequest, res: Response) => {
+  const recordsFound: any[] = []
+  const recordsNotFound: any[] = []
+  let headersValid = true
+  let lineNumber = 0
+  const errorMessages: ValidationErrorItem[] = []
+  const pendingPromises: Promise<void>[] = []
+  const REQ_HEADER = ['serial_hex']
+  try {
+    if (!req.file?.path) {
+      return res.status(400).send({ error: 'No se proporcionó archivo o la ruta es inválida' })
+    }
+
+    validateFileName(req.file.originalname)
+
+    await new Promise<void>((resolve, reject) => {
+      fs.createReadStream(req.file.path)
+        .pipe(stripBomStream())
+        .pipe(csv())
+        .on('headers', (headers: string[]) => {
+          const { missing } = validateHeaders(headers, REQ_HEADER)
+          if (missing.length > 0) {
+            headersValid = false
+            errorMessages.push({
+              message: `Faltan columnas: ${missing.join(', ')}`,
+            })
+          }
+        })
+        .on('data', (row) => {
+          if (headersValid) {
+            lineNumber++
+
+            const promise = (async () => {
+              const card = await model.findOne({ where: { card_serial_number: row.serial_hex.padStart(16, '0') } })
+              console.log(card)
+              if (card) {
+                recordsFound.push(card)
+              } else {
+                recordsNotFound.push({ ...row })
+              }
+            })()
+            pendingPromises.push(promise)
+          }
+        })
+        .on('end', async () => {
+          try {
+            // Esperar todas las promesas pendientes antes de terminar
+            await Promise.all(pendingPromises)
+            resolve()
+          } catch (err) {
+            reject(err)
+          }
+        })
+        .on('error', (error) => {
+          reject(error)
+        })
+    })
+
+    if (!headersValid) {
+      return res.status(400).send({ errors: errorMessages })
+    }
+    const result = {
+      recordsFound,
+      recordsNotFound
+    }
+    return res.status(200).send({success: true, data: result})
+
+  } catch (error) {
+    console.error("Error en getSamsById:", error)
+    return res.status(500).send({ error: "Error interno al procesar el archivo" })
   }
-
-
+}
 export class BlacklistController {
   static newVersion = newVersionLN(BlackList)
   static validateBLFiles = validateFiles(BlackList)
   static getLastVersionRecords = getLastVersionRecords(BlackList)
   static getResumeLastVersion = getResumeLastVersion(BlackList)
   static getCardById = getCardById(BlackList)
+  static getCardsByID = getCardsById(BlackList)
 }
