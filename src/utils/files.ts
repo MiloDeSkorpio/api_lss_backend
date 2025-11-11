@@ -6,7 +6,7 @@ import StolenCards from '../models/StolenCards'
 import { checkDuplicates, eliminarRegistros, getAllValidSams, validateChangeInRecord, validateHeaders } from "./validation"
 import { validateRow } from '../middleware/validationRow'
 import { getHighestVersionRecords, getInvalidRecords, getMaxVersion, getResumeOfValidationBL, getStolenCards, getTotalRecords } from './versions'
-import { CategorizedBLFiles, CategorizedFiles, ValidationErrorItem, catByOrg, categorized, categorizedBl, headers_downs_blacklist, headers_ups_blacklist } from '../types'
+import { CategorizedBLFiles, CategorizedFiles, ValidationErrorItem, categorized, categorizedBl, headers_downs_blacklist, headers_ups_blacklist } from '../types'
 
 export const validateFileName = (filename: string): boolean => {
   try {
@@ -15,7 +15,8 @@ export const validateFileName = (filename: string): boolean => {
       listablanca: /^listablanca_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
       listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
       inventario: /^inventario_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
-      sams: /^buscar_sams.*\.csv$/
+      sams: /^buscar_sams.*\.csv$/,
+      cards: /^buscar_cards.*\.csv$/
     }
 
     const fileType = Object.entries(patterns).find(([, regex]) =>
