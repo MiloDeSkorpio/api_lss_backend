@@ -24,4 +24,9 @@ router.get('/resume-last-ver',
 router.get('/find-card',
   BlacklistController.getCardById
 )
+router.post('/cards-bl',
+  uploadCSV,
+  multerErrorHandler,
+  BlacklistController.getCardsByID
+)
 export default router
