@@ -93,7 +93,7 @@ const getSamById = (model: any) => async (req: Request, res: Response) => {
     const result = await searchByHexID(hexId, model, keyField)
 
     if (!result) {
-      return res.status(404).send({ message: "Record not found" })
+      return res.status(404).send({ message: "No se encontro registro" })
     }
 
     return res.status(200).json({ success: true, data: result })
@@ -103,17 +103,16 @@ const getSamById = (model: any) => async (req: Request, res: Response) => {
     return res.status(500).send({ message: "Internal server error" })
   }
 }
-
 const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
-  const samsFound: any[] = []
-  const samsNotFound: any[] = []
+  const recordsFound: any[] = []
+  const recordsNotFound: any[] = []
   let headersValid = true
   let lineNumber = 0
   const errorMessages: ValidationErrorItem[] = []
   const pendingPromises: Promise<void>[] = []
   const REQ_HEADER = ['serial_hex']
   try {
-    if (!req.file || !req.file.path) {
+    if (!req.file?.path) {
       return res.status(400).send({ error: 'No se proporcionó archivo o la ruta es inválida' })
     }
 
@@ -133,16 +132,15 @@ const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
           }
         })
         .on('data', (row) => {
-          lineNumber++
-
           if (headersValid) {
-            // Guardamos la promesa en lugar de usar await directo
+            lineNumber++
+
             const promise = (async () => {
               const sam = await model.findOne({ where: { SERIAL_HEX: row.serial_hex } })
               if (sam) {
-                samsFound.push({ lineNumber, ...row })
+                recordsFound.push(sam)
               } else {
-                samsNotFound.push({ lineNumber, ...row })
+                recordsNotFound.push({ ...row })
               }
             })()
 
@@ -166,21 +164,17 @@ const getSamsById = (model) => async (req: MulterRequest, res: Response) => {
     if (!headersValid) {
       return res.status(400).send({ errors: errorMessages })
     }
-
-    return res.status(200).send({
-      total: lineNumber,
-      encontrados: samsFound.length,
-      noEncontrados: samsNotFound.length,
-      samsFound,
-      samsNotFound,
-    })
+    const result = {
+      recordsFound,
+      recordsNotFound
+    }
+    return res.status(200).send({success: true, data: result})
 
   } catch (error) {
     console.error("Error en getSamsById:", error)
     return res.status(500).send({ error: "Error interno al procesar el archivo" })
   }
 }
-
 const getLastVersionRecords = (model) => async (req: Request, res: Response) => {
   const result = await getHighestVersionRecords(model,'VERSION','ESTADO')
   const transformedResult = result.map(record => {
@@ -190,7 +184,6 @@ const getLastVersionRecords = (model) => async (req: Request, res: Response) => 
   })
   res.status(200).json(transformedResult)
 }
-
 const newVersion = (model) => async (req: Request, res: Response) => {
   if (!req.body || req.body.length === 0) {
     return res.status(400).json({ error: 'No se subieron archivos' })
@@ -249,7 +242,6 @@ const newVersion = (model) => async (req: Request, res: Response) => {
     res.status(500).json({ error: `${error.message}` })
   }
 }
-
 const compareVersions = (model, baseOptions: any) => async (req: Request, res: Response) => {
   try {
     const { currentVersion, oldVersion } = req.body
@@ -284,7 +276,6 @@ const compareVersions = (model, baseOptions: any) => async (req: Request, res: R
     res.status(500).json({ error: "Error interno del servidor" })
   }
 }
-
 const getResume = (model) => async (req: Request, res: Response) => {
   const versions = await getAllVersions(model)
   const currentVersion = await getMaxVersion(model,'VERSION')
@@ -319,7 +310,6 @@ const getResume = (model) => async (req: Request, res: Response) => {
   }
   res.json(response)
 }
-
 const restoreWhitelistVersion = (model) => async (req: Request, res: Response) => {
   try {
     const { oldVersion } = req.body
