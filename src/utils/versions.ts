@@ -130,12 +130,12 @@ export async function getHighestVersionRecords(
   }
 }
 
-export async function getAllVersions<T extends Model>(model: ModelStatic<T>) {
+export async function getAllVersions<T extends Model>(model: ModelStatic<T>,versionField: string): Promise<any[]> {
   const versions = await model.findAll({
     attributes: [
-      [Sequelize.fn('DISTINCT', Sequelize.col('VERSION')), 'VERSION']
+      [Sequelize.fn('DISTINCT', Sequelize.col(versionField)), versionField]
     ],
-    order: [['VERSION', 'DESC']],
+    order: [[versionField, 'DESC']],
     raw: true
   })
   return versions
@@ -143,11 +143,12 @@ export async function getAllVersions<T extends Model>(model: ModelStatic<T>) {
 
 export async function getAllRecordsBySelectedVersion<T extends Model>(
   model: ModelStatic<T>,
-  version: number
+  version: number,
+  versionField: string
 ): Promise<any[]> {
   const records = await model.findAll({
     where: {
-      VERSION: version
+      [versionField]: version
     } as any,
     raw: true
   })
