@@ -4,10 +4,10 @@ import BlackList from "../models/BlackList";
 import { MulterRequest, ValidationErrorItem, } from "../types";
 import { Response, Request } from 'express'
 import { validateFileName, validateInfoBLFiles } from '../utils/files';
-import { getHighestVersionRecords, getMaxVersion, resumeBlackList } from "../utils/versions";
+import { getAllRecordsBySelectedVersion, getAllVersions, getHighestVersionRecords, getMaxVersion, resumeBlackList } from "../utils/versions";
 import { eliminarRegistrosLN, validateHeaders } from "../utils/validation";
 import { searchByHexID } from "../utils/buscador";
-import { Model, ModelStatic } from "sequelize";
+import { Model, ModelStatic, Op } from "sequelize";
 import stripBomStream from "strip-bom-stream";
 
 const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
@@ -229,6 +229,106 @@ const getCardsById = (model) => async (req: MulterRequest, res: Response) => {
     return res.status(500).send({ error: "Error interno al procesar el archivo" })
   }
 }
+const getResume = (model) => async (req: Request, res: Response) => {
+  const versions = await getAllVersions(model,'version_ln')
+  const currentVersion = await getMaxVersion(model,'version_ln')
+  const currentVersionRecords = await getHighestVersionRecords(model,'version_ln','estado')
+  const totalRecords = currentVersionRecords.length
+  const previusVersion = currentVersion - 1
+  const previusVersionRecords = await getAllRecordsBySelectedVersion(model, previusVersion, 'version_ln')
+  let altasDataV = 0
+  let bajasDataV = 0
+
+
+  if (previusVersion < 1) {
+    altasDataV = currentVersionRecords.length
+  } else {
+
+    const idsPrev = new Set(previusVersionRecords.map(r => r.card_serial_number))
+    const idsCurr = new Set(currentVersionRecords.map(r => r.card_serial_number))
+    const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.card_serial_number))
+    const altas = currentVersionRecords.filter(r => !idsPrev.has(r.card_serial_number))
+    bajasDataV = bajas.length
+    altasDataV = altas.length
+
+  }
+
+  const response = {
+    totalRecords,
+    currentVersion,
+    versions,
+    altasDataV,
+    bajasDataV,
+
+  }
+  res.json(response)
+}
+const restoreBlacklistVersion = (model) => async (req: Request, res: Response) => {
+  try {
+    const { oldVersion } = req.body
+    if (!oldVersion) {
+      return res.status(400).json({ error: 'El parámetro oldVersion es requerido' })
+    }
+
+    const dataVersion = await model.findOne({
+      where: { version_ln: oldVersion },
+      raw: true
+    })
+
+    if (!dataVersion) {
+      return res.status(404).json({ error: 'Versión no encontrada' })
+    }
+
+    const deletedCount = await model.destroy({
+      where: { version_ln: { [Op.gt]: oldVersion } }
+    })
+
+    res.json({
+      success: true,
+      message: `Restauración completada. ${deletedCount} registros eliminados.`
+    })
+  } catch (error) {
+    console.error(`Error en restoreWhitelistVersion:`, error)
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    })
+  }
+}
+const compareVersions = (model, baseOptions: any) => async (req: Request, res: Response) => {
+  try {
+    const { currentVersion, oldVersion } = req.body
+    const [currentData, oldData] = await Promise.all([
+      model.findAll({ ...baseOptions, where: { ...baseOptions.where, version_ln: currentVersion } }),
+      model.findAll({ ...baseOptions, where: { ...baseOptions.where, version_ln: oldVersion } })
+    ])
+
+    if (!currentData || !oldData) {
+      return res.status(404).json({ error: "No se encontraron datos para las versiones especificadas" })
+    }
+
+    // const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
+    const idsPrev = new Set(oldData.map(r => r.card_serial_number))
+    const idsCurr = new Set(currentData.map(r => r.card_serial_number))
+    const bajas = oldData.filter(r => !idsCurr.has(r.card_serial_number))
+    const altas = currentData.filter(r => !idsPrev.has(r.card_serial_number))
+
+    const response = {
+      currentData: currentData.length,
+      oldData: oldData.length,
+      // cambiosRes: cambiosValidos.length,
+      altasRes: altas.length,
+      bajasRes: bajas.length,
+      // cambiosData: cambiosValidos,
+      bajasData: bajas,
+      altasData: altas
+    }
+    res.json(response)
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ error: "Error interno del servidor" })
+  }
+}
 export class BlacklistController {
   static newVersion = newVersionLN(BlackList)
   static validateBLFiles = validateFiles(BlackList)
@@ -236,4 +336,7 @@ export class BlacklistController {
   static getResumeLastVersion = getResumeLastVersion(BlackList)
   static getCardById = getCardById(BlackList)
   static getCardsByID = getCardsById(BlackList)
+  static getResume = getResume(BlackList)
+  static restoreBlacklistVersion = restoreBlacklistVersion(BlackList)
+  static compareVersions = compareVersions(BlackList, { raw: true })
 }
