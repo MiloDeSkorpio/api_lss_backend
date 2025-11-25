@@ -11,6 +11,8 @@
       "strict": false,
       "sourceMap": true,
       "esModuleInterop": true,
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true,
       "declaration": true
   },
   "include": [
