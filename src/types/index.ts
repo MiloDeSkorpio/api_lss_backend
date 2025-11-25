@@ -125,3 +125,13 @@ export const ORG_MAPPING: { [key: string]: keyof typeof catByOrg } = {
   '_46_': 'rtp',
   '_64_': 'sem'
 }
+
+export interface UserAttributes {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  roleId?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
