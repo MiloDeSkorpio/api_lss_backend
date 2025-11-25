@@ -5,11 +5,13 @@ import whiteListRoutes from './routes/whitelistRoutes'
 import samsRoutes from './routes/samsRoutes'
 import blackListRoutes from './routes/blacklistRoutes'
 import { connectDB } from './config/db'
+import authRoutes from './routes/authRoutes'
+import cookieParser from 'cookie-parser'
 // Iniciar la conexion a la DB
 connectDB()
 // Iniciar el Servidor
 const server = express()
-
+server.use(cookieParser())
 server.use(cors({
   origin: process.env.FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -20,6 +22,7 @@ server.use(morgan('dev'))
 // Leer datos de formularios
 server.use(express.json({limit: '50mb'}))
 // Rutas
+server.use("/api/auth", authRoutes)
 server.use('/api/blacklist',blackListRoutes)
 server.use('/api/whitelist',whiteListRoutes)
 server.use('/api/sams',samsRoutes)
