@@ -16,6 +16,7 @@ server.use(cors({
   origin: process.env.FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization','Access-Control-Allow-Origin','origin'],
+  credentials: true
 }))
 
 server.use(morgan('dev'))
