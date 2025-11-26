@@ -14,15 +14,28 @@ export class AuthController {
     } 
   }
 
-  login = async (req: Request, res: Response) => {
-    try {
-      const payload: {email: string, password: string} = req.body
-      const data = await service.login(payload)
-      res.status(200).json({message: 'Autenticado',data})
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || "Error al iniciar sesión" })
-    } 
+login = async (req: Request, res: Response) => {
+  try {
+    const payload: { email: string; password: string } = req.body;
+    const { token, user } = await service.login(payload);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: Boolean(process.env.COOKIE_SECURE),
+      sameSite: process.env.COOKIE_SAMESITE as "lax" | "strict" | "none" | undefined || "lax",
+      maxAge: 1000 * 60 * 60 * 24, // 1 día
+    });
+
+    return res.status(200).json({
+      message: "Autenticado",
+      user,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      message: error.message || "Error al iniciar sesión",
+    })
   }
+}
   
   me = async (req: Request, res: Response) => {
     try {
