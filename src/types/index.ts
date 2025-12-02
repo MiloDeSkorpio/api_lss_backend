@@ -132,6 +132,9 @@ export interface UserAttributes {
   email: string;
   password: string;
   roleId?: number;
+  verification_code: string
+  verification_expires: Date
+  is_verified: boolean
   createdAt?: Date;
   updatedAt?: Date;
 }

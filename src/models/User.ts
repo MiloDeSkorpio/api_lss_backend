@@ -11,6 +11,9 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare email: string
   declare password: string
   declare roleId?: number
+  declare verification_code: string
+  declare verification_expires: Date
+  declare is_verified: boolean
   declare readonly createdAt: Date
   declare readonly updatedAt: Date
 }
@@ -47,6 +50,19 @@ User.init(
       },
       defaultValue: 3,
     },
+    verification_code: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    verification_expires: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    is_verified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    }
+
   },
   {
     tableName: 'users',
