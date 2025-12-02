@@ -6,13 +6,13 @@ import { Role } from './Role'
 interface UserCreationAttributes extends Optional<UserAttributes, 'id'> { }
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: number
-  public name!: string
-  public email!: string
-  public password!: string
-  public roleId?: number
-  public readonly createdAt!: Date
-  public readonly updatedAt!: Date
+  declare id: number
+  declare name: string
+  declare email: string
+  declare password: string
+  declare roleId?: number
+  declare readonly createdAt: Date
+  declare readonly updatedAt: Date
 }
 
 User.init(
