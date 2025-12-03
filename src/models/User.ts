@@ -13,6 +13,12 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare roleId?: number
   declare verification_code: string
   declare verification_expires: Date
+  declare verification_last_sent: Date
+  declare verification_resend_count: number
+  declare reset_code: string
+  declare reset_expires: Date
+  declare reset_last_sent: Date
+  declare reset_resend_count: number
   declare is_verified: boolean
   declare readonly createdAt: Date
   declare readonly updatedAt: Date
@@ -58,6 +64,12 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true
     },
+    verification_last_sent: { type: DataTypes.DATE, allowNull: true },
+    verification_resend_count: { type: DataTypes.INTEGER, defaultValue: 0 },
+    reset_code: { type: DataTypes.STRING, allowNull: true },
+    reset_expires: { type: DataTypes.DATE, allowNull: true },
+    reset_last_sent: { type: DataTypes.DATE, allowNull: true },
+    reset_resend_count: { type: DataTypes.INTEGER, defaultValue: 0 },
     is_verified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

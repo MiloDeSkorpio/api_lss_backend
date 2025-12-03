@@ -134,6 +134,12 @@ export interface UserAttributes {
   roleId?: number;
   verification_code: string
   verification_expires: Date
+  verification_last_sent: Date
+  verification_resend_count: number
+  reset_code: string
+  reset_expires: Date
+  reset_last_sent: Date
+  reset_resend_count: number
   is_verified: boolean
   createdAt?: Date;
   updatedAt?: Date;
