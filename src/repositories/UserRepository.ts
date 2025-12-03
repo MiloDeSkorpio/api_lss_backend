@@ -10,7 +10,8 @@ export class UserRepository {
   async create(userPayload: { name: string, email: string, password: string, verification_code: string, verification_expires: Date, is_verified: boolean }): Promise<User> {
     return await User.create(userPayload)
   }
-  async updateUser(identifier: { id?: number; email?: string },
+  async updateUser(
+    identifier: { id?: number; email?: string },
     updates: Partial<{
       name: string
       email: string
@@ -18,6 +19,12 @@ export class UserRepository {
       verification_code: string
       verification_expires: Date
       is_verified: boolean
+      verification_last_sent: Date
+      verification_resend_count: number
+      reset_code: string
+      reset_expires: Date
+      reset_last_sent: Date
+      reset_resend_count: number
     }>
   ): Promise<number> {
     const [affectedRows] = await User.update(updates, { where: identifier })
