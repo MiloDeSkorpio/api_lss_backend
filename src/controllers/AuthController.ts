@@ -96,6 +96,7 @@ export class AuthController {
   verifyReset = async (req: Request, res: Response) => {
     try {
       await service.verifyResetCode(req.body.email, req.body.code)
+      res.status(200).json({ message: "Código verificado correctamente" })
     } catch (e) { res.status(400).json({ message: e.message }) }
   }
   
