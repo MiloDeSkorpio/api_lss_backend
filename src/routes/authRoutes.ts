@@ -15,6 +15,8 @@ router.post('/logout', authMiddleware, controller.logout)
 router.post('/verify', validateDto(VerifyEmailDto), controller.verify)
 router.post('/resend-code', controller.resendCode)
 router.get('/me', authMiddleware, controller.me)
-
+router.post('/request-reset', controller.requestReset)
+router.post('/verify-reset', controller.verifyReset)
+router.post('/reset-password', controller.resetPassword)
 
 export default router
