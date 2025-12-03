@@ -18,7 +18,7 @@ export class AuthController {
     try {
       const { email, code } = req.body
 
-      await service.verifyEmail(email, code)
+      await service.verifyEmail(email.toLowerCase(), code)
 
       return res.json({ message: "Correo verificado correctamente" })
 
@@ -85,5 +85,25 @@ export class AuthController {
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al cerrar sesión" })
     }
+  }
+
+  requestReset = async (req: Request, res: Response) => {
+    try {
+      await service.requestPasswordReset(req.body.email)
+    } catch (e) { res.status(400).json({ message: e.message }) }
+  }
+
+  verifyReset = async (req: Request, res: Response) => {
+    try {
+      await service.verifyResetCode(req.body.email, req.body.code)
+    } catch (e) { res.status(400).json({ message: e.message }) }
+  }
+  
+  resetPassword = async (req: Request, res: Response) => {
+    try {
+      const { email, code, newPassword } = req.body
+      await service.resetPassword(email, code, newPassword)
+      res.status(200).json({ message: "Contraseña restablecida correctamente" })
+    } catch (e) { res.status(400).json({ message: e.message }) }
   }
 }
