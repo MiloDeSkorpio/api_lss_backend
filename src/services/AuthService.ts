@@ -109,23 +109,35 @@ export class AuthService {
   }
   async resendVerificationCode(email: string) {
     const user = await repo.findByEmail(email.toLowerCase())
-
-    if (!user) {
-      throw new Error("Usuario no encontrado")
-    }
+    if (!user) throw new Error("Usuario no encontrado")
 
     if (user.is_verified) {
       throw new Error("El usuario ya está verificado")
     }
 
+    const now = new Date()
+
+    if (user.verification_last_sent &&
+      now.getTime() - new Date(user.verification_last_sent).getTime() < 60000) {
+      throw new Error("Debes esperar 60 segundos antes de reenviar otro código.")
+    }
+
+    if (user.verification_resend_count >= 5) {
+      throw new Error("Has alcanzado el máximo de reenvíos permitidos hoy.")
+    }
+
     const newCode = Math.floor(100000 + Math.random() * 900000).toString()
-    const newExpires = new Date(Date.now() + 10 * 60 * 1000) // expira en 10 min
+    const newExpires = new Date(Date.now() + 10 * 60 * 1000) // 10 min
 
-    await repo.updateUser({ email: user.email }, {
-      verification_code: newCode,
-      verification_expires: newExpires
-    })
-
+    await repo.updateUser(
+      { email: user.email },
+      {
+        verification_code: newCode,
+        verification_expires: newExpires,
+        verification_last_sent: now,
+        verification_resend_count: (user.verification_resend_count || 0) + 1
+      }
+    )
     await sendMail({
       to: email,
       subject: "Tu nuevo código de verificación",
@@ -137,7 +149,81 @@ export class AuthService {
       `
     })
 
-    return true
+    return { message: "Código reenviado correctamente" }
   }
+  async requestPasswordReset(email: string) {
+    const user = await repo.findByEmail(email)
+    if (!user) throw new Error("Usuario no encontrado")
 
+    const now = new Date()
+
+    // Anti-spam: 1 por minuto
+    if (user.reset_last_sent &&
+      now.getTime() - new Date(user.reset_last_sent).getTime() < 60000) {
+      throw new Error("Espera 60 segundos para reenviar otro código")
+    }
+
+    // Máximo 5 intentos diarios
+    if (user.reset_resend_count >= 5) {
+      throw new Error("Demasiados intentos hoy")
+    }
+
+    const code = crypto.randomInt(100000, 999999).toString()
+
+    await repo.updateUser(
+      { email: user.email },
+      {
+        reset_code: code,
+        reset_expires: new Date(Date.now() + 15 * 60 * 1000), // 15 min
+        reset_last_sent: now,
+        reset_resend_count: (user.reset_resend_count || 0) + 1
+      }
+    )
+
+    await sendMail({
+      to: user.email,
+      subject: "Restablecer contraseña",
+      html: `
+        <h1>Restablecer contraseña</h1>
+        <p>Tu código de verificación es:</p>
+        <h2>${code}</h2>
+        <p>Este código expirará en 15 minutos.</p>
+      `
+    })
+
+    return { message: "Código enviado al correo" }
+  }
+  async verifyResetCode(email: string, code: string) {
+    const user = await repo.findByEmail(email.toLowerCase())
+    if (!user) throw new Error("Usuario no encontrado")
+
+    if (user.reset_code !== code)
+      throw new Error("Código incorrecto")
+
+    if (new Date() > new Date(user.reset_expires))
+      throw new Error("Código expirado")
+
+    return { message: "Código válido" }
+  }
+  async resetPassword(email: string, code: string, newPassword: string) {
+    await this.verifyResetCode(email, code)
+
+    const user = await repo.findByEmail(email.toLowerCase())
+    if (!user) throw new Error("Usuario no encontrado")
+
+    const hashed = await bcrypt.hash(newPassword, 10)
+
+    await repo.updateUser(
+      { email: user.email },
+      {
+        password: hashed,
+        reset_code: null,
+        reset_expires: null,
+        reset_last_sent: null,
+        reset_resend_count: 0
+      }
+    )
+
+    return { message: "Contraseña actualizada correctamente" }
+  }
 }
