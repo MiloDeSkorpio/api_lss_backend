@@ -52,11 +52,11 @@ User.init(
     },
     verification_code: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true
     },
     verification_expires: {
       type: DataTypes.DATE,
-      allowNull: false
+      allowNull: true
     },
     is_verified: {
       type: DataTypes.BOOLEAN,
