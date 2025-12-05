@@ -45,11 +45,11 @@ export class AuthService {
   async login(payload: { email: string, password: string }) {
     const user = await repo.findByEmail(payload.email.toLocaleLowerCase())
     if (!user) {
-      throw new Error('Credenciales inválidas')
+      throw new Error('Correo o contraseña incorrectos')
     }
     const match = await bcrypt.compare(payload.password, user.password)
     if (!match) {
-      throw new Error('Credenciales inválidas')
+      throw new Error('Correo o contraseña incorrectos')
     }
 
     const token = signPayload({
