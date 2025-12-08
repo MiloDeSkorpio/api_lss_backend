@@ -16,3 +16,8 @@ export const authMiddleware = (req: Request & { user?: any }, res: Response, nex
     return res.status(401).json({ message: "Token inválido" })
   }
 }
+export const isCodeExpired = (expiresAt: Date | null) => {
+  if (!expiresAt) return true
+  return new Date() > new Date(expiresAt)
+}
+
