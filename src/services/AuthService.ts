@@ -4,6 +4,7 @@ import { UserRepository } from '../repositories/UserRepository'
 import { signPayload } from '../utils/jwt'
 import { Response } from 'express'
 import { sendMail } from '../utils/sendMail'
+import { isCodeExpired } from '../middleware/auth'
 const repo = new UserRepository()
 
 export class AuthService {
@@ -117,6 +118,10 @@ export class AuthService {
 
     const now = new Date()
 
+    if (!isCodeExpired(user.verification_expires)) {
+      throw new Error("Aún tienes un código activo, revisa tu correo.")
+    }
+    
     if (user.verification_last_sent &&
       now.getTime() - new Date(user.verification_last_sent).getTime() < 60000) {
       throw new Error("Debes esperar 60 segundos antes de reenviar otro código.")
