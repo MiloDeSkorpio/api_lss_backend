@@ -90,6 +90,7 @@ export class AuthController {
   requestReset = async (req: Request, res: Response) => {
     try {
       await service.requestPasswordReset(req.body.email)
+      res.status(200).json({ message: "Se ha enviado un código de restablecimiento" })
     } catch (e) { res.status(400).json({ message: e.message }) }
   }
 

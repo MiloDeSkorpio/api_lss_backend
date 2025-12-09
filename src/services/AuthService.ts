@@ -121,7 +121,7 @@ export class AuthService {
     if (!isCodeExpired(user.verification_expires)) {
       throw new Error("Aún tienes un código activo, revisa tu correo.")
     }
-    
+
     if (user.verification_last_sent &&
       now.getTime() - new Date(user.verification_last_sent).getTime() < 60000) {
       throw new Error("Debes esperar 60 segundos antes de reenviar otro código.")
@@ -159,16 +159,17 @@ export class AuthService {
   async requestPasswordReset(email: string) {
     const user = await repo.findByEmail(email)
     if (!user) throw new Error("Usuario no encontrado")
-
     const now = new Date()
+    
+    if (!isCodeExpired(user.reset_expires)) {
+      throw new Error("Aún tienes un código activo, revisa tu correo.")
+    }
 
-    // Anti-spam: 1 por minuto
     if (user.reset_last_sent &&
       now.getTime() - new Date(user.reset_last_sent).getTime() < 60000) {
       throw new Error("Espera 60 segundos para reenviar otro código")
     }
 
-    // Máximo 5 intentos diarios
     if (user.reset_resend_count >= 5) {
       throw new Error("Demasiados intentos hoy")
     }
