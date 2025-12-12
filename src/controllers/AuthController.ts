@@ -1,13 +1,13 @@
 import { Request, Response } from 'express'
 import { AuthService } from '../services/AuthService'
 
-const service = new AuthService()
-
 export class AuthController {
+  constructor(private readonly service: AuthService) {}
+
   register = async (req: Request, res: Response) => {
     try {
       const payload: { name: string, email: string, password: string } = req.body
-      await service.register(payload)
+      await this.service.register(payload)
       res.status(201).json({ message: 'Usuario registrado. Revisa tu correo para confirmar tu cuenta.' })
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al registrar el usuario" })
@@ -18,7 +18,7 @@ export class AuthController {
     try {
       const { email, code } = req.body
 
-      await service.verifyEmail(email.toLowerCase(), code)
+      await this.service.verifyEmail(email.toLowerCase(), code)
 
       return res.json({ message: "Correo verificado correctamente" })
 
@@ -32,7 +32,7 @@ export class AuthController {
     try {
       const { email } = req.body;
 
-      await service.resendVerificationCode(email);
+      await this.service.resendVerificationCode(email);
       return res.json({
         message: "Se ha enviado un nuevo código de verificación",
       });
@@ -45,7 +45,7 @@ export class AuthController {
   login = async (req: Request, res: Response) => {
     try {
       const payload: { email: string; password: string } = req.body;
-      const { token, user } = await service.login(payload);
+      const { token, user } = await this.service.login(payload);
 
       res.cookie("token", token, {
         httpOnly: true,
@@ -71,7 +71,7 @@ export class AuthController {
       if (!userId) {
         return res.status(401).json({ message: "Usuario no autenticado" })
       }
-      const data = await service.me(userId)
+      const data = await this.service.me(userId)
       res.status(200).json({ user: data })
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al obtener el usuario" })
@@ -80,7 +80,7 @@ export class AuthController {
 
   logout = async (req: Request, res: Response) => {
     try {
-      await service.logout(res)
+      await this.service.logout(res)
       res.status(200).json({ message: "Cierre de sesión exitoso" })
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al cerrar sesión" })
@@ -89,14 +89,14 @@ export class AuthController {
 
   requestReset = async (req: Request, res: Response) => {
     try {
-      await service.requestPasswordReset(req.body.email)
+      await this.service.requestPasswordReset(req.body.email)
       res.status(200).json({ message: "Se ha enviado un código de restablecimiento" })
     } catch (e) { res.status(400).json({ message: e.message }) }
   }
 
   verifyReset = async (req: Request, res: Response) => {
     try {
-      await service.verifyResetCode(req.body.email, req.body.code)
+      await this.service.verifyResetCode(req.body.email, req.body.code)
       res.status(200).json({ message: "Código verificado correctamente" })
     } catch (e) { res.status(400).json({ message: e.message }) }
   }
@@ -104,7 +104,7 @@ export class AuthController {
   resetPassword = async (req: Request, res: Response) => {
     try {
       const { email, code, newPassword } = req.body
-      await service.resetPassword(email, code, newPassword)
+      await this.service.resetPassword(email, code, newPassword)
       res.status(200).json({ message: "Contraseña restablecida correctamente" })
     } catch (e) { res.status(400).json({ message: e.message }) }
   }

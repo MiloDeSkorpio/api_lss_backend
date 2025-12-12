@@ -5,9 +5,13 @@ import { RegisterUserDto } from "../dtos/RegisterUserDto"
 import { LoginUserDto } from "../dtos/LoginUserDto"
 import { authMiddleware } from "../middleware/auth"
 import { VerifyEmailDto } from "../dtos/VerifyEmailDto"
+import { AuthService } from "../services/AuthService"
 
 const router = Router()
-const controller = new AuthController()
+
+const authService = new AuthService()
+
+const controller = new AuthController(authService)
 
 router.post('/register', validateDto(RegisterUserDto), controller.register)
 router.post('/login', validateDto(LoginUserDto), controller.login)
