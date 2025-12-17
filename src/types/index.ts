@@ -157,3 +157,26 @@ export interface UserAttributes {
   createdAt?: Date
   updatedAt?: Date
 }
+
+export interface SamsSitpAttributes {
+production_log_file: string
+serial_number_decimal: bigint
+serial_number_hexadecimal: string
+configuration: string
+reference: string
+line_operator_or_recipient: string
+lock_index: string
+production_date: string
+version: number
+}
+
+export const headers_sams = [
+    'production_log_file',
+    'serial_number_decimal',
+    'serial_number_hexadecimal',
+    'configuration',
+    'reference',
+    'line_operator_or_recipient',
+    'lock_index',
+    'production_date',
+]
