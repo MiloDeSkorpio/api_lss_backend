@@ -4,6 +4,7 @@ import cors from 'cors'
 import whiteListRoutes from './routes/whitelistRoutes'
 import samsRoutes from './routes/samsRoutes'
 import blackListRoutes from './routes/blacklistRoutes'
+import versionHistoryRoutes from './routes/versionHistoryRoutes' // Import the new routes
 import { connectDB } from './config/db'
 import authRoutes from './routes/authRoutes'
 import cookieParser from 'cookie-parser'
@@ -27,5 +28,6 @@ server.use("/api/auth", authRoutes)
 server.use('/api/blacklist',blackListRoutes)
 server.use('/api/whitelist',whiteListRoutes)
 server.use('/api/sams',samsRoutes)
+server.use('/api/version-history', versionHistoryRoutes)
 
 export default server
