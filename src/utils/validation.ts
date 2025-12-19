@@ -217,13 +217,6 @@ export function isSamValid(samsp_id_hex) {
     return true
   }
 }
-export async function getAllValidSams(model) {
-  const result = await model.findAll({
-    attributes: ['provider_code', 'sam_id_hex'],
-    raw: true
-  })
-  return result
-}
 export function isSamInInventory(samsValid: any[], PROVIDER_CODES: any[], SERIAL_HEX: string, OPERATOR: string) {
   return samsValid.some(sam =>
     sam.sam_id_hex === SERIAL_HEX && PROVIDER_CODES.includes(OPERATOR)
