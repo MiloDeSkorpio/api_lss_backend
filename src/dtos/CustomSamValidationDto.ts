@@ -3,25 +3,27 @@ import {
   IsNotEmpty,
   Matches,
   Validate,
-  IsDate,
-} from 'class-validator'
+  } from 'class-validator'
 import { Transform } from 'class-transformer'
 import { AreSerialsEquivalentConstraint } from '../validators/are-serials-equivalent.validator'
-import { parseDDMMYYYY } from '../utils/date'
+
 
 export class CustomSamValidationDto {
 
-  @IsString({ message: 'production_log_file debe ser un texto.' })
+  @IsString()
   @IsNotEmpty({ message: 'production_log_file no debe estar vacío.' })
-  @Matches(/^\d{6}-MexCity-LogSam\d{2}$/, {
-    message: 'El formato de production_log_file debe ser "XXXXXX-MexCity-LogSamXX", donde X es un número.',
+  @Matches(/MexCity/, {
+    message: 'production_log_file debe contener "MexCity".',
+  })
+  @Matches(/^[A-Za-z0-9-]+$/, {
+    message:
+      'production_log_file solo puede contener letras, números y guiones.',
   })
   production_log_file: string
 
-  
+
   @IsString({ message: 'serial_number_hexadecimal debe ser un texto.' })
   @IsNotEmpty({ message: 'serial_number_hexadecimal no debe estar vacío.' })
-  // La validación principal se delega al validador de clase de abajo.
   serial_number_hexadecimal: string
 
 
@@ -33,35 +35,32 @@ export class CustomSamValidationDto {
       return value
     }
   })
-  // Aquí aplicamos nuestro validador personalizado. Se ancla a este campo
-  // pero tiene acceso a todo el objeto DTO para la validación cruzada.
   @Validate(AreSerialsEquivalentConstraint)
   serial_number_decimal: bigint
 
 
   @IsString({ message: 'reference debe ser un texto.' })
   @IsNotEmpty({ message: 'reference no debe estar vacío.' })
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value
+    return value
+      .replace(/\uFEFF/g, '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[\x00-\x1F\x7F]/g, 'v00.00.00')
+      .trim()
+  })
   @Matches(/^v\d{2}\.\d{2}\.\d{2}$/, {
     message: 'El formato de reference debe ser "vXX.XX.XX", donde X es un número.',
   })
   reference: string
 
-
   @IsNotEmpty({ message: 'production_date no debe estar vacío.' })
-  @Transform(({ value }) => {
-    try {
-        return parseDDMMYYYY(value)
-    } catch (e: any) {
-        // Si la utilidad lanza un error (formato inválido), devolvemos el valor original.
-        // El decorador @IsDate se encargará de marcar el error de tipo.
-        return value
-    }
+  @IsString()
+  @Matches(/^\d{2}\/\d{2}\/\d{4}$/, {
+    message: 'production_date debe tener formato DD/MM/YYYY.',
   })
-  @IsDate({ message: 'production_date debe ser una fecha válida con formato DD/MM/YYYY.' })
-  production_date: Date
-  
+  production_date: string
 
-  // Se incluyen otros campos para que el DTO sea completo
   @IsString()
   @IsNotEmpty()
   configuration: string
