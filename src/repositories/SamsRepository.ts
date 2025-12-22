@@ -28,8 +28,8 @@ export class SamsRepository {
           [Op.in]: hexSerials,
         },
       },
-      attributes: ['serial_number_hexadecimal'], // Solo necesitamos este campo para verificar existencia
-    });
-    return existingSams;
+      attributes: ['serial_number_hexadecimal'],
+    })
+    return existingSams
   }
 }
