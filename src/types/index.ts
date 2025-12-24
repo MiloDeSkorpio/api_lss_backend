@@ -126,12 +126,25 @@ export const ORG_MAPPING: { [key: string]: keyof typeof catByOrg } = {
   '_64_': 'sem'
 }
 
+const listNames = ['WHITELIST', 'BLACKLIST', 'WHITELIST_CV', 'LSS-TCSM'] as const
+const operationTypes = ['CREATION', 'ROLLBACK'] as const
+
+export interface VersionHistoryAttributes {
+  id: string
+  listName: typeof listNames[number]
+  version: string
+  operationType: typeof operationTypes[number]
+  userId: number
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 export interface UserAttributes {
-  id: number;
-  name: string;
-  email: string;
-  password: string;
-  roleId?: number;
+  id: number
+  name: string
+  email: string
+  password: string
+  roleId?: number
   verification_code: string
   verification_expires: Date
   verification_last_sent: Date
@@ -141,6 +154,29 @@ export interface UserAttributes {
   reset_last_sent: Date
   reset_resend_count: number
   is_verified: boolean
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date
+  updatedAt?: Date
 }
+
+export interface SamsSitpAttributes {
+production_log_file: string
+serial_number_decimal: bigint
+serial_number_hexadecimal: string
+configuration: string
+reference: string
+line_operator_or_recipient: string
+lock_index: string
+production_date: string
+version: number
+}
+
+export const headers_sams = [
+    'production_log_file',
+    'serial_number_decimal',
+    'serial_number_hexadecimal',
+    'configuration',
+    'reference',
+    'line_operator_or_recipient',
+    'lock_index',
+    'production_date',
+]

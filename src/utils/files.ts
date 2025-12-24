@@ -1,9 +1,8 @@
 import fs from 'fs'
 import csv from 'csv-parser'
 import stripBomStream from "strip-bom-stream"
-import SamsSitp from '../models/SamsSitp'
 import StolenCards from '../models/StolenCards'
-import { checkDuplicates, eliminarRegistros, getAllValidSams, validateChangeInRecord, validateHeaders } from "./validation"
+import { checkDuplicates, eliminarRegistros, validateChangeInRecord, validateHeaders } from "./validation"
 import { validateRow } from '../middleware/validationRow'
 import { getHighestVersionRecords, getInvalidRecords, getMaxVersion, getResumeOfValidationBL, getStolenCards, getTotalRecords } from './versions'
 import { CategorizedBLFiles, CategorizedFiles, ValidationErrorItem, categorized, categorizedBl, headers_downs_blacklist, headers_ups_blacklist } from '../types'
@@ -14,7 +13,7 @@ export const validateFileName = (filename: string): boolean => {
       listanegra: /^listanegra_tarjetas_(altas|bajas)_[0-9A-Fa-f]{2}_\d{14}\.csv$/,
       listablanca: /^listablanca_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
       listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
-      inventario: /^inventario_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
+      inventario: /^inventario_sams_\d{12}\.csv$/,
       sams: /^buscar_sams.*\.csv$/,
       cards: /^buscar_cards.*\.csv$/
     }
@@ -92,7 +91,7 @@ export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HE
 export async function processSingleBLFile(
   file: Express.Multer.File,
   reqHeaders: string[]
-): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
+): Promise<{ fileName: string; validData: any[] ;errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
     let lineNumber = 0
     const errorMessages: ValidationErrorItem[] = []
@@ -145,17 +144,20 @@ export async function processSingleBLFile(
 
   })
 }
+import { plainToInstance } from 'class-transformer'
+import { validate } from 'class-validator'
+
 export async function processSingleFile(
   file: Express.Multer.File,
-  REQUIRED_HEADERS: string[]
-): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
+  REQUIRED_HEADERS: string[],
+  dtoClass?: any, // Make DTO class optional for backward compatibility
+): Promise<{ fileName: string ;validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
-    let lineNumber = 0
     const errorMessages: ValidationErrorItem[] = []
     const fileValidData: any[] = []
     let headersValid = true
+    const rows: any[] = [] 
 
-    const samsValid = await getAllValidSams(SamsSitp)
     fs.createReadStream(file.path)
       .pipe(stripBomStream())
       .pipe(csv())
@@ -174,23 +176,39 @@ export async function processSingleFile(
         }
       })
       .on('data', (row) => {
-        lineNumber++
-        if (headersValid) {
-          validateRow(
-            row,
-            lineNumber,
-            fileValidData,
-            errorMessages,
-            file.originalname,
-          )
-        }
+        rows.push(row)
       })
-      .on('end', () => {
+      .on('end', async () => {
+        if (headersValid) {
+          if (dtoClass) {
+            for (const [index, row] of rows.entries()) {
+              const lineNumber = index + 2 
+              const dtoInstance = plainToInstance(dtoClass, row, { enableImplicitConversion: true })
+              const validationErrors = await validate(dtoInstance)
+
+              if (validationErrors.length > 0) {
+                validationErrors.forEach(error => {
+                  for (const key in error.constraints) {
+                    errorMessages.push({
+                      message: ` Linea: ${lineNumber} - ${error.constraints[key]}: '${error.value}')`,
+                    })
+                  }
+                })
+              } else {
+                fileValidData.push(dtoInstance)
+              }
+            }
+          } else {
+            // If no DTO is provided, just return the raw data (old behavior)
+             fileValidData.push(...rows)
+          }
+        }
+        
         fs.unlinkSync(file.path)
         resolve({
           fileName: file.originalname,
           validData: fileValidData,
-          errors: errorMessages
+          errors: errorMessages,
         })
       })
       .on('error', (error) => {
@@ -199,6 +217,7 @@ export async function processSingleFile(
       })
   })
 }
+// ... (rest of the file)
 export async function validateInfoBLFiles(files, Model) {
   const categorizedBl = categorizeBLFiles(files)
   let hasAltasErrors = false
