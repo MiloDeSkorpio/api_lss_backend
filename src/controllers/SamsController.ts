@@ -1,26 +1,45 @@
 import fs from 'fs'
 import csv from 'csv-parser'
 import type { Request, Response } from 'express'
-import { processSingleFile } from '../utils/files'
 import SamsSitp from '../models/SamsSitp'
 import { Op } from 'sequelize'
 import stripBomStream from 'strip-bom-stream'
+import { MulterRequest } from '../types'
+import { SamsService } from '../services/SamsService'
 
-// Interfaces
-interface MulterRequest extends Request {
-  files: Express.Multer.File[]
-}
-
-const REQUIRED_HEADERS = ['sam_id_hex', 'sam_id_dec', 'sam_tipo', 'sam_config', 'llaves_tipo',
-  'version_parametros', 'lock_index', 'fecha_produccion',
-  'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros',
-  'sam_fabricante', 'sam_archivo_produccion', 'receptor_operador_linea',
-  'recibido_por', 'documento_soporte1', 'documento_soporte2',
-  'observaciones', 'provider_code']
-
-const PROVIDER_CODES = ['01', '02', '03', '04', '05', '06', '07', '15', '32', '3C', '46', '5A', '64']
 
 export class SamsController {
+  private static readonly samsService = new SamsService()
+
+  //   static readonly createSamsRecordController = async (req: MulterRequest, res: Response) => {
+  //   try {
+  //     const result = await SamsController.samsService.createNewVersion(req);
+  //     return res.status(200).json(result);
+  //   } catch (error: any) {
+  //     if (error.message === 'No se subieron archivos') {
+  //       return res.status(400).json({ error: error.message });
+  //     }
+  //     console.error('Error al crear registro SAMS:', error);
+  //     return res.status(500).json({ error: error.message || 'Error interno del servidor' });
+  //   }
+  // }
+
+  static readonly validateSamsRecordController = async (req: MulterRequest, res: Response) => {
+    try {
+      const result = await SamsController.samsService.validateSamsFile(req.file);
+      console.log(result);
+      if (result.success) {
+        return res.status(200).json(result);
+      } else {
+        return res.status(400).json(result); 
+      }
+
+    } catch (error: any) {
+      console.error('Error al validar archivo SAMS:', error);
+      return res.status(500).json({ success: false, message: error.message || 'Error interno del servidor' });
+    }
+  }
+  
   static getAllRecords = async (req: Request, res: Response) => {
     const tableExists = await SamsSitp.sequelize.getQueryInterface().tableExists(SamsSitp.tableName)
 
@@ -33,39 +52,13 @@ export class SamsController {
     })
     return res.status(200).json(records)
   }
-  static createSamsRecordController = async (req: MulterRequest, res: Response) => {
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se subieron archivos' })
-    }
-    const file = req.file
-    try {
-
-      const fileData = await processSingleFile(file, REQUIRED_HEADERS)
-
-      const tableExists = await SamsSitp.sequelize.getQueryInterface().tableExists(SamsSitp.tableName)
-
-      if (!tableExists) {
-        await SamsSitp.sync()
-        return []
-      }
-
-      const result = await SamsSitp.bulkCreate(
-        fileData.validData.map(sam => ({
-          ...sam,
-        }))
-      )
-      return res.status(200).json(result)
-    } catch (error) {
-      res.status(500).json({ error: `${error}` })
-    }
-  }
   static getSamsByFile = async (req: MulterRequest, res: Response) => {
     const resultados: any[] = []
 
     try {
       // Validar que el archivo existe
-      if (!req.file || !req.file.path) {
+      if (!req.file?.path) {
         throw new Error('No se proporcionó archivo o la ruta es inválida')
       }
 
@@ -76,13 +69,13 @@ export class SamsController {
         const serials = batch.map(row => row.serial_hex)
 
         const foundRecords = await SamsSitp.findAll({
-          where: { sam_id_hex: { [Op.in]: serials } },
+          where: { serial_number_hexadecimal: { [Op.in]: serials } },
           raw: true
         })
 
         const recordsMap = new Map()
         foundRecords.forEach(record => {
-          recordsMap.set(record.sam_id_hex, record)
+          recordsMap.set(record.serial_number_hexadecimal, record)
         })
         // Combinar datos del CSV con los registros encontrados
         batch.forEach(row => {
