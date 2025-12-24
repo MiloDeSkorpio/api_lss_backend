@@ -54,6 +54,14 @@ export class SamsService {
         }]
       }
     }
+    const sanitizeBigInt = (data: any[]) =>
+      data.map(row =>
+        JSON.parse(
+          JSON.stringify(row, (_, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+          )
+        )
+      )
     return {
       success: true,
       data: [{
@@ -61,7 +69,7 @@ export class SamsService {
         fileName: file.originalname,
         totalRows: validData.length,
         validRowsCount: validData.length,
-        // altasValidas: validData
+        altasValidas: sanitizeBigInt(validData)
       }]
     }
   }
