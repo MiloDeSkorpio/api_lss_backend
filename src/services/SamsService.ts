@@ -2,6 +2,8 @@ import { processSingleFile } from '../utils/files'
 import { headers_sams } from '../types'
 import { SamsRepository } from '../repositories/SamsRepository'
 import { CustomSamValidationDto } from '../dtos/CustomSamValidationDto'
+import { sanitizeBigInt } from '../utils/sanitizeBigInt'
+import { categorizeByOperator } from '../utils/validation'
 
 export class SamsService {
   private readonly samsRepository: SamsRepository
@@ -14,8 +16,16 @@ export class SamsService {
     if (!file) {
       throw new Error('No se proporcionó ningún archivo para validar.')
     }
-
     const { errors: formatErrors, validData } = await processSingleFile(file, headers_sams, CustomSamValidationDto)
+    const currentVersion = await this.samsRepository.getLastVersión()
+    const currentVersionRecords = await this.samsRepository.getLastVersionRecords()
+    const newVersion = currentVersion + 1
+    const altasValidas = sanitizeBigInt(validData)
+    const hexSerialsToCheck = validData.map(dto => dto.serial_number_hexadecimal)
+    const existingSams = await this.samsRepository.findExistingSerialsByHex(hexSerialsToCheck)
+    const validByOp = categorizeByOperator(altasValidas)
+    const oldByOp = categorizeByOperator(currentVersionRecords)
+    const dupByOp = categorizeByOperator(existingSams)
 
     if (formatErrors.length > 0) {
       return {
@@ -29,48 +39,22 @@ export class SamsService {
 
     if (validData.length === 0) {
       return {
-        success: true,
-        data: [{
-          message: 'El archivo está vacío o no contiene filas válidas.',
-          fileName: file.originalname,
-          summary: {}
-        }]
-      }
-    }
-
-    const hexSerialsToCheck = validData.map(dto => dto.serial_number_hexadecimal)
-    const existingSams = await this.samsRepository.findExistingSerialsByHex(hexSerialsToCheck)
-    const existingSerialsSet = new Set(existingSams.map(sam => sam.serial_number_hexadecimal))
-    console.log(existingSams)
-    console.log(existingSerialsSet)
-    const allErrors = [...formatErrors]
-
-    if (allErrors.length > 0) {
-      return {
         success: false,
-        errorsFiles: [{
-          fileName: file.originalname,
-          fileErrors: allErrors
-        }]
+        message: 'El archivo está vacío o no contiene filas válidas.',
       }
     }
-    const sanitizeBigInt = (data: any[]) =>
-      data.map(row =>
-        JSON.parse(
-          JSON.stringify(row, (_, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-          )
-        )
-      )
+
     return {
       success: true,
-      data: [{
-        message: 'El archivo ha sido validado exitosamente y está listo para ser procesado.',
-        fileName: file.originalname,
-        totalRows: validData.length,
-        validRowsCount: validData.length,
-        altasValidas: sanitizeBigInt(validData)
-      }]
+      currentVersion,
+      newVersion,
+      currentVersionCount: currentVersionRecords.length,
+      newVersionRecordsCount: validData.length,
+      ignoredRows: existingSams.length,
+      altasValidas,
+      validByOp,
+      oldByOp,
+      dupByOp
     }
   }
 }
