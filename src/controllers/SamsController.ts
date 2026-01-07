@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'node:fs'
 import csv from 'csv-parser'
 import type { Request, Response } from 'express'
 import SamsSitp from '../models/SamsSitp'
@@ -13,30 +13,28 @@ export class SamsController {
 
   //   static readonly createSamsRecordController = async (req: MulterRequest, res: Response) => {
   //   try {
-  //     const result = await SamsController.samsService.createNewVersion(req);
-  //     return res.status(200).json(result);
+  //     const result = await SamsController.samsService.createNewVersion(req)
+  //     return res.status(200).json(result)
   //   } catch (error: any) {
   //     if (error.message === 'No se subieron archivos') {
-  //       return res.status(400).json({ error: error.message });
+  //       return res.status(400).json({ error: error.message })
   //     }
-  //     console.error('Error al crear registro SAMS:', error);
-  //     return res.status(500).json({ error: error.message || 'Error interno del servidor' });
+  //     console.error('Error al crear registro SAMS:', error)
+  //     return res.status(500).json({ error: error.message || 'Error interno del servidor' })
   //   }
   // }
 
   static readonly validateSamsRecordController = async (req: MulterRequest, res: Response) => {
     try {
-      const result = await SamsController.samsService.validateSamsFile(req.file);
-      console.log(result);
+      const result = await SamsController.samsService.validateSamsFile(req.file)
       if (result.success) {
-        return res.status(200).json(result);
+        return res.status(200).json(result)
       } else {
-        return res.status(400).json(result); 
+        return res.status(400).json(result) 
       }
-
     } catch (error: any) {
-      console.error('Error al validar archivo SAMS:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Error interno del servidor' });
+      console.error('Error al validar archivo SAMS:', error)
+      return res.status(500).json({ success: false, message: error.message || 'Error interno del servidor' })
     }
   }
   
