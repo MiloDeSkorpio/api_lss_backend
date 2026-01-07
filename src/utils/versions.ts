@@ -98,7 +98,7 @@ export async function getInvalidRecords(model) {
 export async function getHighestVersionRecords(
   model,
   versionField,
-  statusField,
+  statusField?,
 ) {
   try {
 
