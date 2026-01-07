@@ -167,7 +167,7 @@ reference: string
 line_operator_or_recipient: string
 lock_index: string
 production_date: string
-version: number
+version?: number
 }
 
 export const headers_sams = [
@@ -179,4 +179,20 @@ export const headers_sams = [
     'line_operator_or_recipient',
     'lock_index',
     'production_date',
+]
+
+export interface CategoryConfig {
+  key: string
+  label: string
+  regex: RegExp
+}
+
+export const CATEGORIES: CategoryConfig[] = [
+  { key: 'STC', label: 'STC', regex: /STC/i },
+  { key: 'STE', label: 'STE', regex: /STE|Cablebus/i },
+  { key: 'ORT', label: 'ORT', regex: /ORT/i },
+  { key: 'RTP', label: 'RTP', regex: /RTP/i },
+  { key: 'Metrobus', label: 'Metrobus', regex: /MB Line/i },
+  { key: 'Edomex', label: 'Edomex', regex: /Mexicable|Mexibus/i },
+  { key: 'Spirtech', label: 'Spirtech', regex: /Spirtech/i }
 ]
