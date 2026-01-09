@@ -6,23 +6,26 @@ import { Op } from 'sequelize'
 import stripBomStream from 'strip-bom-stream'
 import { MulterRequest } from '../types'
 import { SamsService } from '../services/SamsService'
+import { AuthRequest } from '../types/AuthRequest'
 
 
 export class SamsController {
   private static readonly samsService = new SamsService()
 
-  //   static readonly createSamsRecordController = async (req: MulterRequest, res: Response) => {
-  //   try {
-  //     const result = await SamsController.samsService.createNewVersion(req)
-  //     return res.status(200).json(result)
-  //   } catch (error: any) {
-  //     if (error.message === 'No se subieron archivos') {
-  //       return res.status(400).json({ error: error.message })
-  //     }
-  //     console.error('Error al crear registro SAMS:', error)
-  //     return res.status(500).json({ error: error.message || 'Error interno del servidor' })
-  //   }
-  // }
+    static readonly createSamsRecordController = async (req: AuthRequest, res: Response) => {
+      const { altasValidas,newVersion } = req.body
+      const { user } = req
+      try {
+      const result = await SamsController.samsService.createNewVersion(altasValidas, user.id, newVersion)
+      return res.status(200).json(result)
+    } catch (error: any) {
+      if (error.message === 'No se subieron archivos') {
+        return res.status(400).json({ error: error.message })
+      }
+      console.error('Error al crear registro SAMS:', error)
+      return res.status(500).json({ error: error.message || 'Error interno del servidor' })
+    }
+  }
 
   static readonly validateSamsRecordController = async (req: MulterRequest, res: Response) => {
     try {
