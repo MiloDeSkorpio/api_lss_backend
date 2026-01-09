@@ -1,15 +1,15 @@
 import { DataTypes, Model, Optional } from 'sequelize'
 import connexion from '../config/db'
-import { VersionHistoryAttributes } from '../types'
+import { ListName, OperationType, VersionHistoryAttributes } from '../types'
 import { User } from './User'
 
 interface VersionHistoryCreationAttributes extends Optional<VersionHistoryAttributes, 'id'> {}
 
 export class VersionHistory extends Model<VersionHistoryAttributes, VersionHistoryCreationAttributes> implements VersionHistoryAttributes {
-  public id!: string
-  public listName!: 'WHITELIST' | 'BLACKLIST' | 'WHITELIST_CV' | 'LSS-TCSM'
+  public id!: number
+  public listName!: ListName
   public version!: string
-  public operationType!: 'CREATION' | 'ROLLBACK'
+  public operationType!: OperationType
   public userId!: number
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
@@ -18,12 +18,12 @@ export class VersionHistory extends Model<VersionHistoryAttributes, VersionHisto
 VersionHistory.init(
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
       primaryKey: true,
     },
     listName: {
-      type: DataTypes.ENUM('WHITELIST', 'BLACKLIST', 'WHITELIST_CV','LSS-TCSM'),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     version: {
@@ -31,11 +31,11 @@ VersionHistory.init(
       allowNull: false,
     },
     operationType: {
-      type: DataTypes.ENUM('CREATION', 'ROLLBACK'),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     userId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.UUID,
       allowNull: false,
       references: {
         model: 'users',
