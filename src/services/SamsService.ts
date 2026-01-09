@@ -1,9 +1,12 @@
 import { processSingleFile } from '../utils/files'
-import { headers_sams } from '../types'
+import { headers_sams, OperationType } from '../types'
 import { SamsRepository } from '../repositories/SamsRepository'
 import { CustomSamValidationDto } from '../dtos/CustomSamValidationDto'
 import { sanitizeBigInt } from '../utils/sanitizeBigInt'
 import { categorizeByOperator } from '../utils/validation'
+import { versionHistoryRepository, VersionHistoryRepository } from '../repositories/VersionHistoryRepository'
+import sequelize from 'sequelize/lib/sequelize'
+import connexion from '../config/db'
 
 export class SamsService {
   private readonly samsRepository: SamsRepository
@@ -57,4 +60,30 @@ export class SamsService {
       dupByOp
     }
   }
+  public async createNewVersion(records, userId, version) {
+    if (!records) {
+      throw new Error('No hay información para una nueva versión.')
+    }
+    return await connexion.transaction(async (t) => {
+
+      const recordsWithVersion = records.map(r => ({
+        ...r,
+        version
+      }))
+
+      await this.samsRepository.bulkCreate(recordsWithVersion)
+
+      await versionHistoryRepository.create(
+        {
+          listName: 'SAMS',
+          version,
+          operationType: 'CREATION' as OperationType,
+          userId
+        },
+        { transaction: t }
+      )
+      return { success: true }
+    })
+  }
 }
+
