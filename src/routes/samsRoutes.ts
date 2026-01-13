@@ -18,11 +18,15 @@ router.post('/new-version',
   SamsController.createSamsRecordController
 )
 
+router.get('/get-summary',
+  authMiddleware,
+  SamsController.getSummary
+)
+// before refactor module
 router.get('/all-records',
   authMiddleware,
   SamsController.getAllRecords
 )
-
 
 router.post('/find-by-file',
   authMiddleware,
