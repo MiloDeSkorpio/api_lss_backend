@@ -1,8 +1,6 @@
 import SamsSitp from '../models/SamsSitp'
 import { SamsSitpAttributes } from '../types'
 import { Op } from 'sequelize'
-import { getHighestVersionRecords, getMaxVersion } from '../utils/versions'
-
 
 export class SamsRepository {
 
@@ -29,18 +27,24 @@ export class SamsRepository {
           [Op.in]: hexSerials,
         },
       },
+      raw: true,
       attributes: ['serial_number_hexadecimal'],
     })
     return existingSams
   }
 
   public async getLastVersión(): Promise<any> {
-    const latestVersion = getMaxVersion(SamsSitp,'version')
+    const latestVersion = await SamsSitp.max('version')
     return latestVersion
   }
 
   public async getLastVersionRecords(): Promise<SamsSitp[]> {
-    const lastVersionRecords = getHighestVersionRecords(SamsSitp,'version','status')
-    return lastVersionRecords
+    const maxVersion = await this.getLastVersión()
+    return  await SamsSitp.findAll({
+      where: {
+        version: maxVersion,
+      },
+      raw: true
+    })
   }
 }
