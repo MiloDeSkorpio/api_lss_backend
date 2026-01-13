@@ -4,8 +4,7 @@ import { SamsRepository } from '../repositories/SamsRepository'
 import { CustomSamValidationDto } from '../dtos/CustomSamValidationDto'
 import { sanitizeBigInt } from '../utils/sanitizeBigInt'
 import { categorizeByOperator } from '../utils/validation'
-import { versionHistoryRepository, VersionHistoryRepository } from '../repositories/VersionHistoryRepository'
-import sequelize from 'sequelize/lib/sequelize'
+import { versionHistoryRepository } from '../repositories/VersionHistoryRepository'
 import connexion from '../config/db'
 
 export class SamsService {
@@ -26,9 +25,18 @@ export class SamsService {
     const altasValidas = sanitizeBigInt(validData)
     const hexSerialsToCheck = validData.map(dto => dto.serial_number_hexadecimal)
     const existingSams = await this.samsRepository.findExistingSerialsByHex(hexSerialsToCheck)
-    const validByOp = categorizeByOperator(altasValidas)
+    const existingHexSet = new Set(
+      existingSams.map(s => s.serial_number_hexadecimal)
+    )
+    const altasFinales = altasValidas.filter(
+      dto => !existingHexSet.has(dto.serial_number_hexadecimal)
+    )
+    const altasDuplicadas = altasValidas.filter(
+      dto => existingHexSet.has(dto.serial_number_hexadecimal)
+    )
+    const validByOp = categorizeByOperator(altasFinales)
     const oldByOp = categorizeByOperator(currentVersionRecords)
-    const dupByOp = categorizeByOperator(existingSams)
+    const dupByOp = categorizeByOperator(altasDuplicadas)
 
     if (formatErrors.length > 0) {
       return {
@@ -54,7 +62,8 @@ export class SamsService {
       currentVersionCount: currentVersionRecords.length,
       newVersionRecordsCount: validData.length,
       ignoredRows: existingSams.length,
-      altasValidas,
+      altasValidas: altasFinales,
+      altasDuplicadas,
       validByOp,
       oldByOp,
       dupByOp
@@ -84,6 +93,24 @@ export class SamsService {
       )
       return { success: true }
     })
+  }
+  public async getSummaryLastVersión() {
+    const currentVersionRecords = await this.samsRepository.getLastVersionRecords()
+    const totalRecords = currentVersionRecords.length
+    const categorized = categorizeByOperator(currentVersionRecords)
+    const recordsByOrg = Object.entries(categorized).map(
+      ([label, records]) => ({
+        label,
+        value: records.length,
+      })
+    )
+    const version = await this.samsRepository.getLastVersión()
+    return {
+      success: true,
+      version,
+      totalRecords,
+      recordsByOrg
+    }
   }
 }
 
