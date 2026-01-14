@@ -22,6 +22,10 @@ router.get('/get-summary',
   authMiddleware,
   SamsController.getSummary
 )
+router.get('/find-by-serial/:hexId',
+  authMiddleware,
+  SamsController.getSamBySerial
+)
 // before refactor module
 router.get('/all-records',
   authMiddleware,
