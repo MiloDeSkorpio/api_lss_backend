@@ -47,4 +47,12 @@ export class SamsRepository {
       raw: true
     })
   }
+  public async getBySerialHex(hexId: string): Promise<SamsSitp | null> {
+    return await SamsSitp.findOne({
+      where: {
+        serial_number_hexadecimal: `$${hexId}`
+      },
+      raw: true
+    })  
+  }
 }
