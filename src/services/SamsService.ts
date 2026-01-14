@@ -60,7 +60,7 @@ export class SamsService {
       currentVersion,
       newVersion,
       currentVersionCount: currentVersionRecords.length,
-      newVersionRecordsCount: validData.length,
+      newVersionRecordsCount: altasFinales.length,
       ignoredRows: existingSams.length,
       altasValidas: altasFinales,
       altasDuplicadas,
@@ -95,9 +95,9 @@ export class SamsService {
     })
   }
   public async getSummaryLastVersión() {
-    const currentVersionRecords = await this.samsRepository.getLastVersionRecords()
-    const totalRecords = currentVersionRecords.length
-    const categorized = categorizeByOperator(currentVersionRecords)
+    const records = await this.samsRepository.getLastVersionRecords()
+    const totalRecords = records.length
+    const categorized = categorizeByOperator(records)
     const recordsByOrg = Object.entries(categorized).map(
       ([label, records]) => ({
         label,
@@ -109,8 +109,12 @@ export class SamsService {
       success: true,
       version,
       totalRecords,
-      recordsByOrg
+      recordsByOrg,
+      records
     }
+  }
+  public async getSamBySerial(hexId: string) {
+    return await this.samsRepository.getBySerialHex(hexId)
   }
 }
 
