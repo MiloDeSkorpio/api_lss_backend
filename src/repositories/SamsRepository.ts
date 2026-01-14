@@ -55,4 +55,10 @@ export class SamsRepository {
       raw: true
     })  
   }
+  public async getSamsBySerialHex(serials) {
+    return await  SamsSitp.findAll({
+          where: { serial_number_hexadecimal: { [Op.in]: serials } },
+          raw: true
+        })
+  }
 }

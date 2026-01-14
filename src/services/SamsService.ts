@@ -1,3 +1,7 @@
+import fs from 'node:fs'
+import csv from 'csv-parser'
+import { Op } from 'sequelize'
+import stripBomStream from 'strip-bom-stream'
 import { processSingleFile } from '../utils/files'
 import { headers_sams, OperationType } from '../types'
 import { SamsRepository } from '../repositories/SamsRepository'
@@ -115,6 +119,69 @@ export class SamsService {
   }
   public async getSamBySerial(hexId: string) {
     return await this.samsRepository.getBySerialHex(hexId)
+  }
+  public async getSamsByHex(file: Express.Multer.File) {
+    const resultados: any[] = []
+
+    try {
+
+      if (!file) {
+        throw new Error('No se proporcionó archivo o la ruta es inválida')
+      }
+
+      const batchSize = 100
+      let currentBatch = []
+
+      const processBatch = async (batch) => {
+        const serials = batch.map(row => `$${row.serial_hex}`)
+        const foundRecords = await this.samsRepository.getSamsBySerialHex(serials)
+
+        foundRecords.forEach(record => {
+           resultados.push({
+              ...record, 
+            })
+        })
+      }
+      // Procesar el CSV
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(file.path)
+          .pipe(stripBomStream())
+          .pipe(csv())
+          .on('data', async (row) => {
+            currentBatch.push(row)
+            if (currentBatch.length >= batchSize) {
+              await processBatch(currentBatch)
+              currentBatch = []
+            }
+
+          })
+          .on('end', async () => {
+            if (currentBatch.length > 0) {
+              const resultados = await processBatch(currentBatch)
+
+              resolve(resultados)
+            }
+          })
+          .on('error', (error) => {
+            reject(error)
+          })
+      })
+
+      return resultados
+    } catch (error) {
+      console.error('Error en el procesamiento:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    } finally {
+      if (file && file.path) {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error al eliminar archivo temporal:', err)
+        })
+      }
+    }
+
   }
 }
 
