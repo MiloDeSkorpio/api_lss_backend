@@ -12,7 +12,7 @@ import { AuthRequest } from '../types/AuthRequest'
 export class SamsController {
   private static readonly samsService = new SamsService()
 
-    static readonly createSamsRecordController = async (req: AuthRequest, res: Response) => {
+  static readonly createSamsRecordController = async (req: AuthRequest, res: Response) => {
       const { altasValidas,newVersion } = req.body
       const { user } = req
       try {
@@ -54,7 +54,17 @@ export class SamsController {
       return res.status(500).json({success: false, message: error.message})
     }
   }
-  
+
+  static readonly getSamBySerial = async (req: Request, res: Response) => {
+    const { hexId } = req.params
+    const result =  await SamsController.samsService.getSamBySerial(hexId)
+    if (result) {
+      return  res.status(200).json(result)
+    } else {
+      return res.status(404).json({ success: false, message: 'No se encontró el SAM con el número de serie proporcionado.' })
+    }
+  }
+  //before refactor module
   static getAllRecords = async (req: Request, res: Response) => {
     const tableExists = await SamsSitp.sequelize.getQueryInterface().tableExists(SamsSitp.tableName)
 
@@ -81,8 +91,7 @@ export class SamsController {
       let currentBatch = []
 
       const processBatch = async (batch) => {
-        const serials = batch.map(row => row.serial_hex)
-
+        const serials = batch.map(row => `$${row.serial_hex}`)
         const foundRecords = await SamsSitp.findAll({
           where: { serial_number_hexadecimal: { [Op.in]: serials } },
           raw: true
@@ -94,7 +103,7 @@ export class SamsController {
         })
         // Combinar datos del CSV con los registros encontrados
         batch.forEach(row => {
-          const matchedRecord = recordsMap.get(row.serial_hex)
+        const matchedRecord = recordsMap.get(row.serial_hex)
           if (matchedRecord) {
             resultados.push({
               ...matchedRecord,      // Todos los campos del registro encontrado
@@ -102,6 +111,7 @@ export class SamsController {
           }
         })
       }
+      console.log(resultados)
       // Procesar el CSV
       await new Promise((resolve, reject) => {
         fs.createReadStream(req.file.path)
@@ -125,7 +135,7 @@ export class SamsController {
             reject(error)
           })
       })
-
+      console.log(resultados)
       res.json(resultados)
     } catch (error) {
       console.error('Error en el procesamiento:', error)
