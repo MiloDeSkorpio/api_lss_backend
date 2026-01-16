@@ -16,7 +16,7 @@ export class SamsService {
     if (!file) {
       throw new Error('No se proporcionó ningún archivo para validar.')
     }
-    const { errors: formatErrors, validData } = await processSingleFile(file, headers_sams, CustomSamValidationDto)
+    const { errors: formatErrors, validData } = await processSingleFile(file, headers_sams)
     const currentVersion = await this.samsRepository.getLastVersión()
     const currentVersionRecords = await this.samsRepository.getLastVersionRecords()
     const newVersion = currentVersion + 1
