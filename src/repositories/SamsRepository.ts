@@ -2,9 +2,14 @@ import SamsSitp from '../models/SamsSitp'
 import { SamsSitpAttributes } from '../types'
 import { Op } from 'sequelize'
 import { getHighestVersionRecords, getMaxVersion } from '../utils/versions'
+import { BaseRepository } from './BaseRepository'
 
 
-export class SamsRepository {
+export class SamsRepository extends BaseRepository<SamsSitp> {
+
+  constructor() {
+    super(SamsSitp)
+  }
 
   public async tableExists(): Promise<boolean> {
     const queryInterface = SamsSitp.sequelize?.getQueryInterface()
@@ -42,5 +47,8 @@ export class SamsRepository {
   public async getLastVersionRecords(): Promise<SamsSitp[]> {
     const lastVersionRecords = getHighestVersionRecords(SamsSitp,'version','status')
     return lastVersionRecords
+  }
+   public async existsBySerialHex(serialHex: string) {
+    return  !!(await this.findOne({ serial_number_hexadecimal: `$${serialHex}` }, true))
   }
 }
