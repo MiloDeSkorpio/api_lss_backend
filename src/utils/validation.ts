@@ -1,6 +1,7 @@
 import { createHash } from "crypto"
 import { toInt } from "validator"
 import { CATEGORIES, HeaderValidationResult, SamsSitpAttributes } from "../types"
+import SamsSitp from "../models/SamsSitp"
 
 
 export function sonEquivalentesNum(dec: number, hex: string): boolean {
@@ -217,10 +218,8 @@ export function isSamValid(samsp_id_hex) {
     return true
   }
 }
-export function isSamInInventory(samsValid: any[], PROVIDER_CODES: any[], SERIAL_HEX: string, OPERATOR: string) {
-  return samsValid.some(sam =>
-    sam.sam_id_hex === SERIAL_HEX && PROVIDER_CODES.includes(OPERATOR)
-  )
+export function isSamInInventory( serial_hex: string) {
+  return SamsSitp.findOne({where: {serial_number_hexadecimal : `$${serial_hex}` }})
 }
 export function isCardInStolenPack(stolenCards: any[], card_serial_number: string, estado: string) {
   return stolenCards.some(card =>
@@ -300,3 +299,17 @@ export function categorizeByOperator<T extends SamsSitpAttributes>(
 
   return result
 }
+export function locationZoneValidation(locationZone: unknown) {
+  if (locationZone === null || locationZone === undefined) {
+    throw new Error('locationZone es requerido')
+  }
+
+  const value = String(locationZone).trim()
+
+  if (!/^[01]$/.test(value)) {
+    throw new Error(
+      `locationZone inválido (${locationZone}). Solo se permite 0 o 1`
+    )
+  }
+}
+
