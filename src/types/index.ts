@@ -196,3 +196,8 @@ export const CATEGORIES: CategoryConfig[] = [
   { key: 'Edomex', label: 'Edomex', regex: /Mexicable|Mexibus/i },
   { key: 'Spirtech', label: 'Spirtech', regex: /Spirtech/i }
 ]
+
+export const headers_lss_tcsm = [
+    'serial_hex',
+    'location_zone',
+]
