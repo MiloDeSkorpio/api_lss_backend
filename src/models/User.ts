@@ -6,11 +6,11 @@ import { Role } from './Role'
 interface UserCreationAttributes extends Optional<UserAttributes, 'id'> { }
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  declare id: number
+  declare id: string
   declare name: string
   declare email: string
   declare password: string
-  declare roleId?: number
+  declare roleId: string
   declare verification_code: string
   declare verification_expires: Date
   declare verification_last_sent: Date
@@ -27,8 +27,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
 User.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      autoIncrement: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
     name: {
@@ -48,12 +48,14 @@ User.init(
       allowNull: false,
     },
     roleId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.UUID,
       allowNull: true,
       references: {
         model: Role,
         key: 'id',
       },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
       defaultValue: 3,
     },
     verification_code: {

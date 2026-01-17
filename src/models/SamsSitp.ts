@@ -47,7 +47,7 @@ SamsSitp.init(
       allowNull: false
     },
     production_date: {
-      type: DataTypes.DATE,
+      type: DataTypes.STRING,
       allowNull: false
     },
     version: {

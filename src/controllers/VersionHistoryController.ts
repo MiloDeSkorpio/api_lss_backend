@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { VersionHistoryService } from '../services/VersionHistoryService'
 import { LogVersionHistoryDto } from '../dtos/LogVersionHistoryDto' 
+import { listNames } from '../types'
 
 export class VersionHistoryController {
   constructor(private readonly service: VersionHistoryService) {}
@@ -18,7 +19,7 @@ export class VersionHistoryController {
   getVersionsByListName = async (req: Request, res: Response) => {
     try {
       const { listName } = req.params
-      if (!['WHITELIST', 'BLACKLIST', 'WHITELIST_CV'].includes(listName as any)) {
+      if (!listNames.includes(listName as any)) {
         return res.status(400).json({ message: 'Tipo de lista no válido' })
       }
       const history = await this.service.getVersionsByListName(listName as any)
@@ -31,7 +32,7 @@ export class VersionHistoryController {
   getLatestVersionByListName = async (req: Request, res: Response) => {
     try {
       const { listName } = req.params
-      if (!['WHITELIST', 'BLACKLIST', 'WHITELIST_CV'].includes(listName as any)) {
+      if (!listNames.includes(listName as any)) {
         return res.status(400).json({ message: 'Tipo de lista no válido' })
       }
       const latestVersion = await this.service.getLatestVersionByListName(listName as any)
