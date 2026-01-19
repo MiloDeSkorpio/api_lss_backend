@@ -2,6 +2,8 @@ import { Router } from "express";
 import { uploadCSVs } from "../middleware/uploadFiles";
 import { multerErrorHandler } from "../middleware";
 import { LSSTCSMController } from "../controllers/LSSTCSMController";
+import { LSSTIMTController } from "../controllers/LSSTIMTController";
+
 
 const router = Router()
 
@@ -12,5 +14,15 @@ router.post('/validate-tcsm',
   multerErrorHandler,
   LSSTCSMController.validateFile
 )
+
+
+// LSS_TIMT
+
+router.post('/validate-timt',
+  uploadCSVs,
+  multerErrorHandler,
+  LSSTIMTController.validateFile
+)
+
 
 export default router

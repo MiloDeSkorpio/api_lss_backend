@@ -16,7 +16,8 @@ export const validateFileName = (filename: string): boolean => {
       inventario: /^inventario_sams_\d{12}\.csv$/,
       sams: /^buscar_sams.*\.csv$/,
       cards: /^buscar_cards.*\.csv$/,
-      lssTCSM: /^listaseguridadchalco_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/
+      lssTCSM: /^listaseguridadchalco_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/,
+      lssTIMT: /^listaseguridadtimt_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/
     }
 
     const fileType = Object.entries(patterns).find(([, regex]) =>

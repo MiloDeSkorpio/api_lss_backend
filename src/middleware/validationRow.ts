@@ -1,7 +1,7 @@
 import { priorityValues, PROVIDER_CODES, ValidationErrorItem } from "../types";
 import { assertSamExistsInInventory } from "../utils/buscador";
 import { validateFileName } from "../utils/files";
-import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, locationZoneValidation, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
+import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, locationZoneValidation, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHex6, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTimeRange, validateTypeSam, validateWeekBitmap } from "../utils/validation";
 
 let ignoreWl = ['ESTACION']
 let ignoreIn = ['version_parametros', 'lock_index', 'fecha_produccion', 'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros', 'recibido_por', 'documento_soporte1', 'documento_soporte2', 'observaciones']
@@ -22,6 +22,9 @@ export async function validateRow(row: any, lineNumber: number, validData: any[]
   }
   else if (fileName.includes('listaseguridadchalco')) {
     return await validateLssTCSM(row, errors, validData,lineNumber)
+  }
+  else if (fileName.includes('listaseguridadtimt')) {
+    return await validateLssTIMT(row, errors, validData,lineNumber)
   }
   return false
 
@@ -141,6 +144,30 @@ async function validateLssTCSM(
     validarSerialHex(row.serial_hex)
     await assertSamExistsInInventory(row.serial_hex)
     locationZoneValidation(row.location_zone)
+  } catch (error) {
+    errors.push({
+      message: `Linea: ${lineNumber} - ${error.message}`
+    })
+  }
+   if (errors.length === 0) {
+    validData.push({
+      ...row,
+      serial_hex: row.serial_hex
+    })
+  }
+}
+async function validateLssTIMT(
+  row: any,
+  errors: ValidationErrorItem[],
+  validData: any[],
+  lineNumber: number
+) {
+  try {
+    validarSerialHex(row.serial_hex)
+    await assertSamExistsInInventory(row.serial_hex)
+    validateHex6(row.location_id)
+    validateWeekBitmap(Number(row.dias))
+    validateTimeRange(row.horario)
   } catch (error) {
     errors.push({
       message: `Linea: ${lineNumber} - ${error.message}`

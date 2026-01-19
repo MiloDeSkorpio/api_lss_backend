@@ -313,3 +313,54 @@ export function locationZoneValidation(locationZone: unknown) {
   }
 }
 
+export function validateWeekBitmap(bitmap: number) {
+  if (!Number.isInteger(bitmap)) {
+    throw new Error('El bitmap de días debe ser un número entero')
+  }
+
+  if (bitmap < 0 || bitmap > 127) {
+    throw new Error(
+      `Bitmap inválido (${bitmap}). Debe estar entre 0 y 127`
+    )
+  }
+}
+
+export function validateTimeRange(timeRange: string) {
+  if (typeof timeRange !== 'string') {
+    throw new Error('El rango horario debe ser un texto')
+  }
+
+  const regex = /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/
+  const match = timeRange.match(regex)
+
+  if (!match) {
+    throw new Error(
+      `Formato de hora inválido (${timeRange}). Use hh:mm-hh:mm`
+    )
+  }
+
+  const [, sh, sm, eh, em] = match.map(Number)
+
+  const startMinutes = sh * 60 + sm
+  const endMinutes = eh * 60 + em
+
+  if (startMinutes >= endMinutes) {
+    throw new Error(
+      `El rango horario es inválido (${timeRange}). La hora inicial debe ser menor a la final`
+    )
+  }
+}
+
+export function validateHex6(value: string) {
+  if (typeof value !== 'string') {
+    throw new Error('El valor hexadecimal debe ser una cadena de texto')
+  }
+
+  const hexRegex = /^[0-9A-Fa-f]{6}$/
+
+  if (!hexRegex.test(value)) {
+    throw new Error(
+      `Valor hexadecimal inválido (${value}). Debe ser base 16 y tener exactamente 6 caracteres`
+    )
+  }
+}

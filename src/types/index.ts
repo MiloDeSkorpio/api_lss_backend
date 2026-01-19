@@ -201,3 +201,9 @@ export const headers_lss_tcsm = [
     'serial_hex',
     'location_zone',
 ]
+export const headers_lss_timt = [
+    'serial_hex',
+    'location_id',
+    'dias',
+    'horario',
+]
