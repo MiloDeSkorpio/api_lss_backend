@@ -1,4 +1,4 @@
-import { Response } from 'express'
+import { Response, Request } from 'express'
 import { LSSTIMTService } from "../services/LSSTIMTService";
 import { MulterRequest } from "../types";
 
@@ -11,7 +11,6 @@ export class LSSTIMTController {
     try {
       if (!req.files) { return res.status(400).json({ success: false, message: 'Archivo requerido', }) }
       const result = await LSSTIMTController.service.validateFiles(req.files)
-
       if (result) {
         return res.status(200).json(result)
       } else {
@@ -25,4 +24,18 @@ export class LSSTIMTController {
       })
     }
   }
+
+    static readonly getSummary = async(res: Response) => {
+      try {
+        const result = await LSSTIMTController.service.getSummaryLastVersión()
+        if(result.success){
+          return res.status(200).json(result)
+        } else {
+          return res.status(400).json(result)
+        }
+      } catch (error) {
+        console.log('Error al obtener resumen:', error)
+        return res.status(500).json({success: false, message: error.message})
+      }
+    }
 }

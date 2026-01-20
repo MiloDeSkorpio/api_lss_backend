@@ -1,7 +1,6 @@
 import SamsSitp from '../models/SamsSitp'
 import { SamsSitpAttributes } from '../types'
 import { Op } from 'sequelize'
-import { getHighestVersionRecords, getMaxVersion } from '../utils/versions'
 import { BaseRepository } from './BaseRepository'
 
 

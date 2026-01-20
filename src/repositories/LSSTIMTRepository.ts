@@ -6,14 +6,23 @@ export class LSSTIMTRepository extends BaseRepository<LSS_TIMT> {
   constructor() {
     super(LSS_TIMT)
   }
-  async lastVersion(versionField: string): Promise<number> {
-    return super.max(versionField)
+  public async lastVersion(): Promise<number> {
+  return (await super.max('version')) || 0
   } 
-  async findAllByVersion(version: number): Promise<LSS_TIMT[]> {
+  public async findAllByVersion(version: number): Promise<LSS_TIMT[]> {
     return super.findAll({ version })
   }
-  async findAllInactiveRecords() {
+  public async findAllInactiveRecords() {
     return super.findAll({ status: 'INACTIVE' })
+  }
+  public async getLastVersionRecords(): Promise<LSS_TIMT[]> {
+    const maxVersion = await this.lastVersion()
+    return await LSS_TIMT.findAll({
+      where: {
+        version: maxVersion
+      },
+      raw: true
+    })
   }
 }
 
