@@ -5,6 +5,8 @@ import { getHighestVersionRecords, getMaxVersion } from '../utils/versions'
 import { BaseRepository } from './BaseRepository'
 
 
+
+
 export class SamsRepository extends BaseRepository<SamsSitp> {
 
   constructor() {
@@ -34,19 +36,39 @@ export class SamsRepository extends BaseRepository<SamsSitp> {
           [Op.in]: hexSerials,
         },
       },
+      raw: true,
       attributes: ['serial_number_hexadecimal'],
     })
     return existingSams
   }
 
   public async getLastVersión(): Promise<any> {
-    const latestVersion = getMaxVersion(SamsSitp,'version')
+    const latestVersion = await SamsSitp.max('version')
     return latestVersion
   }
 
   public async getLastVersionRecords(): Promise<SamsSitp[]> {
-    const lastVersionRecords = getHighestVersionRecords(SamsSitp,'version','status')
-    return lastVersionRecords
+    const maxVersion = await this.getLastVersión()
+    return  await SamsSitp.findAll({
+      where: {
+        version: maxVersion,
+      },
+      raw: true
+    })
+  }
+  public async getBySerialHex(hexId: string): Promise<SamsSitp | null> {
+    return await SamsSitp.findOne({
+      where: {
+        serial_number_hexadecimal: `$${hexId}`
+      },
+      raw: true
+    })  
+  }
+  public async getSamsBySerialHex(serials) {
+    return await  SamsSitp.findAll({
+          where: { serial_number_hexadecimal: { [Op.in]: serials } },
+          raw: true
+        })
   }
    public async existsBySerialHex(serialHex: string) {
     return  !!(await this.findOne({ serial_number_hexadecimal: `$${serialHex}` }, true))

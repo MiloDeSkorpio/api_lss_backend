@@ -126,11 +126,14 @@ export const ORG_MAPPING: { [key: string]: keyof typeof catByOrg } = {
   '_64_': 'sem'
 }
 
-const listNames = ['WHITELIST', 'BLACKLIST', 'WHITELIST_CV', 'LSS-TCSM'] as const
-const operationTypes = ['CREATION', 'ROLLBACK'] as const
+export const listNames = ['SAMS','WHITELIST', 'BLACKLIST', 'WHITELIST_CV', 'LSS-TCSM','LSS-TIMT'] as const
+export const operationTypes = ['CREATION', 'ROLLBACK'] as const
+
+export type ListName = typeof listNames[number]
+export type OperationType = typeof operationTypes[number]
 
 export interface VersionHistoryAttributes {
-  id: string
+  id: number
   listName: typeof listNames[number]
   version: string
   operationType: typeof operationTypes[number]
@@ -140,11 +143,11 @@ export interface VersionHistoryAttributes {
 }
 
 export interface UserAttributes {
-  id: number
+  id?: string
   name: string
   email: string
   password: string
-  roleId?: number
+  roleId: string
   verification_code: string
   verification_expires: Date
   verification_last_sent: Date
