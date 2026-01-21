@@ -1,5 +1,5 @@
 import LSSTIMTRepository from "../repositories/LSSTIMTRepository"
-import { headers_lss_timt } from "../types"
+import { headers_lss_timt, LssTIMTProps } from "../types"
 import { categorizeAllFiles, processFileGroup } from "../utils/files"
 import { checkDuplicates, eliminarRegistros, validateChangeInRecord } from "../utils/validation"
 
@@ -120,5 +120,14 @@ export class LSSTIMTService {
       totalRecords,
       records
     }
+  }
+
+  public async createNewVersionRecords(altas, bajas, cambios,userId,version): Promise<any> {
+    if(!altas && !bajas && !cambios){
+      throw new Error('No hay información para una nueva versión.')
+    }
+    
+    console.log(userId,version)
+    // return await this.repo.bulkCreate(records)
   }
 }

@@ -24,6 +24,9 @@ export class LSSTIMTRepository extends BaseRepository<LSS_TIMT> {
       raw: true
     })
   }
+  public async bulkCreate(records: any[]): Promise<any> {
+    return await LSS_TIMT.bulkCreate(records)
+  }
 }
 
 export default LSSTIMTRepository

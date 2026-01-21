@@ -210,3 +210,9 @@ export const headers_lss_timt = [
     'dias',
     'horario',
 ]
+export interface LssTIMTProps { 
+    serial_hex: string
+    location_id: string
+    dias: string
+    horario: string
+}

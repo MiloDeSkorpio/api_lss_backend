@@ -1,10 +1,26 @@
 import { Response, Request } from 'express'
 import { LSSTIMTService } from "../services/LSSTIMTService";
 import { MulterRequest } from "../types";
+import { AuthRequest } from '../types/AuthRequest';
 
 
-export class LSSTIMTController { 
+export class LSSTIMTController {
   private static readonly service = new LSSTIMTService()
+
+  static readonly createNewLssTIMT = async (req: AuthRequest, res: Response) => {
+    const { altasValidas, bajasValidas, cambiosValidos, newVersion } = req.body
+    const { user } = req
+    try {
+      const result = await LSSTIMTController.service.createNewVersionRecords(altasValidas, bajasValidas, cambiosValidos, user.id, newVersion)
+      return res.status(200).json(result)
+    } catch (error: any) {
+      if (error.message === 'No hay información para una nueva versión.') {
+        return res.status(400).json({ error: error.message })
+      } 
+      console.error('Error al crear nueva versión LSS_TIMT:', error)
+      return res.status(500).json({ error: error.message || 'Error interno del servidor' })
+    }
+  }
 
   static readonly validateFile = async (req: MulterRequest, res: Response) => {
 
@@ -25,17 +41,17 @@ export class LSSTIMTController {
     }
   }
 
-    static readonly getSummary = async(res: Response) => {
-      try {
-        const result = await LSSTIMTController.service.getSummaryLastVersión()
-        if(result.success){
-          return res.status(200).json(result)
-        } else {
-          return res.status(400).json(result)
-        }
-      } catch (error) {
-        console.log('Error al obtener resumen:', error)
-        return res.status(500).json({success: false, message: error.message})
+  static readonly getSummary = async (_req: Request, res: Response) => {
+    try {
+      const result = await LSSTIMTController.service.getSummaryLastVersión()
+      if (result.success) {
+        return res.status(200).json(result)
+      } else {
+        return res.status(400).json(result)
       }
+    } catch (error) {
+      console.log('Error al obtener resumen:', error)
+      return res.status(500).json({ success: false, message: error.message })
     }
+  }
 }

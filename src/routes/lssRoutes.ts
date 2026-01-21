@@ -19,6 +19,10 @@ router.post('/validate-tcsm',
 
 
 // LSS_TIMT
+router.post('/new-version-timt',
+  authMiddleware,
+  LSSTIMTController.createNewLssTIMT
+)
 
 router.post('/validate-timt',
   authMiddleware,
@@ -27,7 +31,7 @@ router.post('/validate-timt',
   LSSTIMTController.validateFile
 )
 
-router.get('/get-summary',
+router.get('/get-summary-timt',
   authMiddleware,
   LSSTIMTController.getSummary
 )
