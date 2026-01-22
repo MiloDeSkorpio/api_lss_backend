@@ -1,3 +1,4 @@
+import { response } from "express"
 import LSSTIMTRepository from "../repositories/LSSTIMTRepository"
 import { headers_lss_timt, LssTIMTProps } from "../types"
 import { categorizeAllFiles, processFileGroup } from "../utils/files"
@@ -17,6 +18,7 @@ export class LSSTIMTService {
     let hasAltasErrors = false
     let hasBajasErrors = false
     let hasCambiosErrors = false
+
     const results = []
     try {
       let [altasData, bajasData, cambiosData] = await Promise.all([
@@ -47,7 +49,11 @@ export class LSSTIMTService {
             fileErrors: result.errors
           })
         })
-        return results
+        const response = {
+          success: false,
+          errorsFiles: results
+        }
+        return response
       } else {
         let lastVersion = await this.repo.lastVersion()
         if (!lastVersion) { lastVersion = 0 }
@@ -76,31 +82,33 @@ export class LSSTIMTService {
           }
         })
 
-        const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
+        const { datosValidos: bajasValidas = [], datosDuplicados: bajasInactivas = [] } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
+       
+        const { cambiosValidos = [], sinCambios = []} = validateChangeInRecord(lastVersionRecords, cambiosFinal, keyField)
 
-        const { cambiosValidos, sinCambios } = validateChangeInRecord(lastVersionRecords, cambiosFinal)
-
-        const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } = checkDuplicates(lastVersionRecords, altasFinal, keyField)
+        const { datosValidos: altasValidas = [], datosDuplicados: altasDuplicadas = [] } = checkDuplicates(lastVersionRecords, altasFinal, keyField)
 
         const finalRecords = eliminarRegistros(lastVersionRecords, altasValidas, cambiosValidos)
 
         const newRecords = [...finalRecords, ...altasValidas]
 
         const newRecordsCount = lastVersionRecords.length + altasValidas.length - bajasValidas.length
+        console.log( bajasValidas)
+return {
+  success: true,
+  lastVersion,
+  lastVersionRecords,
+  newVersion,
+  newRecords,
+  newRecordsCount,
+  altasValidas: altasValidas ?? [],
+  altasDuplicadas: altasDuplicadas ?? [],
+  bajasValidas: bajasValidas ?? [],
+  bajasInactivas: bajasInactivas ?? [],
+  cambiosValidos: cambiosValidos ?? [],
+  sinCambios: sinCambios ?? []
+}
 
-        return {
-          lastVersion,
-          lastVersionRecords,
-          newVersion,
-          newRecords,
-          newRecordsCount,
-          altasValidas,
-          altasDuplicadas,
-          bajasValidas,
-          bajasInactivas,
-          cambiosValidos,
-          sinCambios
-        }
         
       }
     } catch (error) {
@@ -122,7 +130,7 @@ export class LSSTIMTService {
     }
   }
 
-  public async createNewVersionRecords(altas, bajas, cambios,userId,version): Promise<any> {
+  public async createNewVersion(altas, bajas, cambios,userId,version): Promise<any> {
     if(!altas && !bajas && !cambios){
       throw new Error('No hay información para una nueva versión.')
     }

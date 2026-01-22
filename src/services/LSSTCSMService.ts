@@ -72,7 +72,7 @@ export class LSSTCSMService {
 
         const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
 
-        const { cambiosValidos, sinCambios } = validateChangeInRecord(lastVersionRecords, cambiosFinal)
+        const { cambiosValidos, sinCambios } = validateChangeInRecord(lastVersionRecords, cambiosFinal, keyField)
 
         const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } = checkDuplicates(lastVersionRecords, altasFinal, keyField)
 

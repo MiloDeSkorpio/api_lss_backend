@@ -125,13 +125,11 @@ function validateInventorySams(
 ) {
   validateRequiredFields(row, ignoreIn)
   const serialDec = validateHexValuesToDec(row.sam_id_dec, row.sam_id_hex)
-  validateProviderCode(PROVIDER_CODES, row.provider_code)
+
   isSamValid(row.samsp_id_hex)
-  const semoviId = genSemoviId(row.sam_id_hex, row.sam_id_dec, row.provider_code)
+
   return validData.push({
     ...row,
-    id_semovi: semoviId,
-    sam_id_dec: serialDec
   })
 }
 async function validateLssTCSM(

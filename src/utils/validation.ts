@@ -29,17 +29,21 @@ export function eliminarRegistrosLN<T extends { card_serial_number: string }>(
     )
   )
 }
-export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]) {
-  const sinCambios = []
-  const cambiosValidos = []
+export function validateChangeInRecord(currentRecords: any[], cambiosData: any[],keyField: string) {
+  const sinCambios: any[] = []
+  const cambiosValidos: any[] = []
   const camposExcluidos = ['ESTADO', 'VERSION']
 
   const normalizeVal = (v: any) =>
     v === null || v === undefined ? '' : String(v).trim()
 
+  if (!Array.isArray(cambiosData) || cambiosData.length === 0) {
+    return { sinCambios: [], cambiosValidos: [] }
+  }
+
   cambiosData.forEach(registroCambio => {
     const registroExistente = currentRecords.find(
-      r => normalizeVal(r.SERIAL_HEX) === normalizeVal(registroCambio.SERIAL_HEX)
+      r => normalizeVal(r[keyField]) === normalizeVal(registroCambio[keyField])
     )
 
     if (!registroExistente) {
@@ -61,6 +65,7 @@ export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]
 
   return { sinCambios, cambiosValidos }
 }
+
 export function verifyIfExistRecord(arrayCompare: any[], arrayData: any[], keyField: string) {
   const notFoundRecords = []
   const datosExistentes = arrayData.filter(row => {
@@ -75,24 +80,33 @@ export function verifyIfExistRecord(arrayCompare: any[], arrayData: any[], keyFi
   })
   return { datosExistentes, notFoundRecords }
 }
-export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField: string) {
+export function checkDuplicates(
+  arrayCompare: any[],
+  arrayData: any[],
+  keyField: string
+) {
+  const datosDuplicados: any[] = []
 
-  const datosDuplicados = []
-  // Filtrar las bajas que están en arrayInvalidData
+  if (!Array.isArray(arrayData) || arrayData.length === 0) {
+    return { datosValidos: [], datosDuplicados: [] }
+  }
+
   const datosValidos = arrayData.filter(row => {
-    const esDuplicado = arrayCompare.some(invalidRow =>
-      invalidRow[keyField] === row[keyField] // Comparación por ID (ajusta según tu necesidad)
+    const esDuplicado = arrayCompare.some(compareRow =>
+      compareRow[keyField] === row[keyField]
     )
 
     if (esDuplicado) {
       datosDuplicados.push(row)
       return false
     }
+
     return true
   })
 
   return { datosValidos, datosDuplicados }
 }
+
 export function validateHeaders(headers: string[], required: string[]): HeaderValidationResult {
   const missing = required.filter(h => !headers.includes(h));
   const extra = headers.filter(h => !required.includes(h));

@@ -11,7 +11,7 @@ export class LSSTIMTController {
     const { altasValidas, bajasValidas, cambiosValidos, newVersion } = req.body
     const { user } = req
     try {
-      const result = await LSSTIMTController.service.createNewVersionRecords(altasValidas, bajasValidas, cambiosValidos, user.id, newVersion)
+      const result = await LSSTIMTController.service.createNewVersion(altasValidas, bajasValidas, cambiosValidos, user.id, newVersion)
       return res.status(200).json(result)
     } catch (error: any) {
       if (error.message === 'No hay información para una nueva versión.') {
@@ -27,7 +27,7 @@ export class LSSTIMTController {
     try {
       if (!req.files) { return res.status(400).json({ success: false, message: 'Archivo requerido', }) }
       const result = await LSSTIMTController.service.validateFiles(req.files)
-      if (result) {
+      if (result.success) {
         return res.status(200).json(result)
       } else {
         return res.status(400).json(result)
