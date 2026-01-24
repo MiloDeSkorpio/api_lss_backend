@@ -151,7 +151,7 @@ export async function processSingleFile(
 export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], dtoClass?: any,) => {
   const processingPromises = files.map(async (file) => {
     try {
-      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS)
+      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS,dtoClass)
       return { fileName, errors, validData }
     } catch (error) {
       return {

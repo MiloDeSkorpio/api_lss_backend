@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import csv from 'csv-parser'
-import { Op } from 'sequelize'
 import stripBomStream from 'strip-bom-stream'
 import { processSingleFile } from '../utils/files'
 import { headers_sams, OperationType } from '../types'
@@ -22,7 +21,7 @@ export class SamsService {
     if (!file) {
       throw new Error('No se proporcionó ningún archivo para validar.')
     }
-    const { errors: formatErrors, validData } = await processSingleFile(file, headers_sams)
+    const { errors: formatErrors, validData } = await processSingleFile(file, headers_sams, CustomSamValidationDto)
     const currentVersion = await this.samsRepository.getLastVersión()
     const currentVersionRecords = await this.samsRepository.getLastVersionRecords()
     const newVersion = currentVersion + 1

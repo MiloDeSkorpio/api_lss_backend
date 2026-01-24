@@ -10,7 +10,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare name: string
   declare email: string
   declare password: string
-  declare roleId: string
+  declare roleId: number
   declare verification_code: string
   declare verification_expires: Date
   declare verification_last_sent: Date
@@ -48,7 +48,7 @@ User.init(
       allowNull: false,
     },
     roleId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       references: {
         model: Role,
@@ -88,3 +88,5 @@ User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 Role.hasMany(User, { foreignKey: "roleId" });
 
 export default User
+
+// User.sync({ alter: true })

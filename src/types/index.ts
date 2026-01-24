@@ -147,7 +147,7 @@ export interface UserAttributes {
   name: string
   email: string
   password: string
-  roleId: string
+  roleId: number
   verification_code: string
   verification_expires: Date
   verification_last_sent: Date

@@ -3,6 +3,7 @@ import { BaseRepository } from './BaseRepository'
 
 
 export class LSSTIMTRepository extends BaseRepository<LSS_TIMT> {
+
   constructor() {
     super(LSS_TIMT)
   }
@@ -27,6 +28,23 @@ export class LSSTIMTRepository extends BaseRepository<LSS_TIMT> {
   public async bulkCreate(records: any[]): Promise<any> {
     return await LSS_TIMT.bulkCreate(records)
   }
+  public async existsInVersion(
+  serialHex: string,
+  version: number
+): Promise<boolean> {
+  const count = await LSS_TIMT.count({
+    where: {
+      serial_hex: serialHex,
+      version,
+      status: true
+    }
+  })
+
+  return count > 0
 }
 
-export default LSSTIMTRepository
+}
+
+export const lsstimtRepository = new LSSTIMTRepository()
+
+export default lsstimtRepository

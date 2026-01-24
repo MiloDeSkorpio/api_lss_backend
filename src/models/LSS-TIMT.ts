@@ -6,7 +6,7 @@ export class LSS_TIMT extends Model {
   public location_id!: string
   public dias!: string
   public horario!: string
-  public status!: string
+  public status!: boolean
   public version!: number
 }
 LSS_TIMT.init(
@@ -30,8 +30,8 @@ LSS_TIMT.init(
       allowNull: false, 
     },
     status: {
-      type: DataTypes.STRING,
-      defaultValue: 'ACTIVO',
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
       allowNull: false,
       primaryKey: true
     },

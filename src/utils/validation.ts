@@ -327,42 +327,187 @@ export function locationZoneValidation(locationZone: unknown) {
   }
 }
 
-export function validateWeekBitmap(bitmap: number) {
-  if (!Number.isInteger(bitmap)) {
-    throw new Error('El bitmap de días debe ser un número entero')
-  }
+// validators/is-week-bitmap.validator.ts
+import {
+  registerDecorator,
+  ValidationOptions,
+  ValidationArguments,
+  ValidatorConstraint,
+  ValidatorConstraintInterface
+} from 'class-validator'
+import lsstimtRepository from "../repositories/LSSTIMTRepository"
 
-  if (bitmap < 0 || bitmap > 127) {
-    throw new Error(
-      `Bitmap inválido (${bitmap}). Debe estar entre 0 y 127`
-    )
+
+
+export function IsWeekBitmap(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isWeekBitmap',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any) {
+          return (
+            Number.isInteger(value) &&
+            value >= 0 &&
+            value <= 127
+          )
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `Bitmap inválido (${args.value}). Debe estar entre 0 y 127`
+        }
+      }
+    })
   }
 }
 
-export function validateTimeRange(timeRange: string) {
-  if (typeof timeRange !== 'string') {
-    throw new Error('El rango horario debe ser un texto')
+
+// validators/is-time-range.validator.ts
+
+export function IsTimeRange(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isTimeRange',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: string) {
+          if (typeof value !== 'string') return false
+
+          const regex =
+            /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/
+          const match = value.match(regex)
+          if (!match) return false
+
+          const [, sh, sm, eh, em] = match.map(Number)
+          return sh * 60 + sm < eh * 60 + em
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `Rango horario inválido (${args.value}). Use hh:mm-hh:mm`
+        }
+      }
+    })
   }
+}
 
-  const regex = /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/
-  const match = timeRange.match(regex)
+export function SerialNotInLastVersion(
+  validationOptions?: ValidationOptions
+) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'serialNotInLastVersion',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        async validate(serialHex: string) {
+          if (!serialHex) return false
 
-  if (!match) {
-    throw new Error(
-      `Formato de hora inválido (${timeRange}). Use hh:mm-hh:mm`
-    )
+          const lastVersion =
+            await lsstimtRepository.lastVersion()
+
+          if (!lastVersion) return true
+
+          const exists =
+            await lsstimtRepository.existsInVersion(
+              serialHex,
+              lastVersion
+            )
+
+          return !exists
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `serial_hex ${args.value} ya existe en la última versión`
+        }
+      }
+    })
   }
+}
 
-  const [, sh, sm, eh, em] = match.map(Number)
+export function SerialMustBeActive(validationOptions?: ValidationOptions) {
+  return function(object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'serialMustBeActive',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        async validate(serialHex: string) {
+          if (!serialHex) return false
 
-  const startMinutes = sh * 60 + sm
-  const endMinutes = eh * 60 + em
+          const lastVersion = await lsstimtRepository.lastVersion()
+          if (!lastVersion) return false // No hay versión → no se puede dar de baja
 
-  if (startMinutes >= endMinutes) {
-    throw new Error(
-      `El rango horario es inválido (${timeRange}). La hora inicial debe ser menor a la final`
-    )
+          const exists = await lsstimtRepository.existsInVersion(serialHex, lastVersion)
+          return exists // True si existe activo
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `El serial_hex ${args.value} no está activo en la última versión`
+        }
+      }
+    })
   }
+}
+export function HasAtLeastOne(properties: string[], validationOptions?: ValidationOptions) {
+  return function(object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'hasAtLeastOne',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(_: any, args: ValidationArguments) {
+          const obj = args.object as Record<string, any>
+          return properties.some(p => obj[p] !== undefined)
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `Debe cambiar al menos uno de los campos: ${properties.join(', ')}`
+        }
+      }
+    })
+  }
+}
+export function HasChangesForLocationDiasHorario(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'hasChangesForLocationDiasHorario',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        async validate(_: any, args: ValidationArguments): Promise<boolean> {
+          const obj = args.object as Record<string, any>;
+
+          // Obtener última versión
+          const lastVersion = await lsstimtRepository.lastVersion();
+          if (!lastVersion) return true; // no hay versión previa → válido
+
+          // Buscar registro actual
+          const records = await lsstimtRepository.findAllByVersion(lastVersion);
+          const current = records.find(r => r.serial_hex === obj.serial_hex);
+          if (!current) return false; // no existe → inválido
+
+          // Normalizar y comparar campos
+          const locationNew = String(obj.location_id ?? '').trim();
+          const locationCurrent = String(current.location_id ?? '').trim();
+
+          const diasNew = Number(obj.dias ?? 0);
+          const diasCurrent = Number(current.dias ?? 0);
+
+          const horarioNew = String(obj.horario ?? '').replace(/\s/g, '').toLowerCase();
+          const horarioCurrent = String(current.horario ?? '').replace(/\s/g, '').toLowerCase();
+
+          // Validar si hay al menos un cambio
+          return locationNew !== locationCurrent || diasNew !== diasCurrent || horarioNew !== horarioCurrent;
+        },
+        defaultMessage(args: ValidationArguments) {
+          return 'Debe modificar al menos location_id, dias o horario respecto a la versión actual';
+        }
+      }
+    });
+  };
 }
 
 export function validateHex6(value: string) {

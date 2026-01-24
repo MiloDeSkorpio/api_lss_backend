@@ -1,7 +1,7 @@
 import { priorityValues, PROVIDER_CODES, ValidationErrorItem } from "../types";
 import { assertSamExistsInInventory } from "../utils/buscador";
 import { validateFileName } from "../utils/files";
-import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, locationZoneValidation, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHex6, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTimeRange, validateTypeSam, validateWeekBitmap } from "../utils/validation";
+import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, locationZoneValidation, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHex6, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
 
 let ignoreWl = ['ESTACION']
 let ignoreIn = ['version_parametros', 'lock_index', 'fecha_produccion', 'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros', 'recibido_por', 'documento_soporte1', 'documento_soporte2', 'observaciones']
@@ -14,17 +14,8 @@ export async function validateRow(row: any, lineNumber: number, validData: any[]
   else if (fileName.includes('listanegra')) {
     return validateListaNegra(row, errors, fileName, validData, lineNumber,)
   }
-  else if (fileName.includes('inventario')) {
-    return validateInventorySams(row, errors, fileName, PROVIDER_CODES, validData)
-  }
   else if (fileName.includes('buscar')) {
     return validateSearch(row, errors, fileName, validData,lineNumber)
-  }
-  else if (fileName.includes('listaseguridadchalco')) {
-    return await validateLssTCSM(row, errors, validData,lineNumber)
-  }
-  else if (fileName.includes('listaseguridadtimt')) {
-    return await validateLssTIMT(row, errors, validData,lineNumber)
   }
   return false
 
@@ -116,65 +107,5 @@ async function validateSearch(
     })
   }
 }
-function validateInventorySams(
-  row: any,
-  errors: ValidationErrorItem[],
-  fileName: string,
-  PROVIDER_CODES: string[],
-  validData: any[]
-) {
-  validateRequiredFields(row, ignoreIn)
-  const serialDec = validateHexValuesToDec(row.sam_id_dec, row.sam_id_hex)
 
-  isSamValid(row.samsp_id_hex)
 
-  return validData.push({
-    ...row,
-  })
-}
-async function validateLssTCSM(
-  row: any,
-  errors: ValidationErrorItem[],
-  validData: any[],
-  lineNumber: number
-) {
-  try {
-    validarSerialHex(row.serial_hex)
-    await assertSamExistsInInventory(row.serial_hex)
-    locationZoneValidation(row.location_zone)
-  } catch (error) {
-    errors.push({
-      message: `Linea: ${lineNumber} - ${error.message}`
-    })
-  }
-   if (errors.length === 0) {
-    validData.push({
-      ...row,
-      serial_hex: row.serial_hex
-    })
-  }
-}
-async function validateLssTIMT(
-  row: any,
-  errors: ValidationErrorItem[],
-  validData: any[],
-  lineNumber: number
-) {
-  try {
-    validarSerialHex(row.serial_hex)
-    await assertSamExistsInInventory(row.serial_hex)
-    validateHex6(row.location_id)
-    validateWeekBitmap(Number(row.dias))
-    validateTimeRange(row.horario)
-  } catch (error) {
-    errors.push({
-      message: `Linea: ${lineNumber} - ${error.message}`
-    })
-  }
-   if (errors.length === 0) {
-    validData.push({
-      ...row,
-      serial_hex: row.serial_hex
-    })
-  }
-}

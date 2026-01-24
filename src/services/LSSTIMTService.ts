@@ -1,15 +1,24 @@
 import { response } from "express"
-import LSSTIMTRepository from "../repositories/LSSTIMTRepository"
-import { headers_lss_timt, LssTIMTProps } from "../types"
+import {
+  LSSTIMTRepository,
+  lsstimtRepository
+} from  "../repositories/LSSTIMTRepository"
+import { headers_lss_timt, LssTIMTProps, OperationType } from "../types"
 import { categorizeAllFiles, processFileGroup } from "../utils/files"
 import { checkDuplicates, eliminarRegistros, validateChangeInRecord } from "../utils/validation"
+import connexion from "../config/db"
+import { versionHistoryRepository } from "../repositories/VersionHistoryRepository"
+import { CambiosTIMTDto } from "../dtos/lss_timt/CambiosTIMTDto"
+import { AltasTIMTDto } from "../dtos/lss_timt/AltasTIMTDto"
+import { BajasTIMTDto } from "../dtos/lss_timt/BajasTIMTDto"
+
 
 
 export class LSSTIMTService {
   private readonly repo: LSSTIMTRepository
 
   constructor() {
-    this.repo = new LSSTIMTRepository()
+    this.repo =  lsstimtRepository
   }
 
   public async validateFiles(files) {
@@ -22,9 +31,9 @@ export class LSSTIMTService {
     const results = []
     try {
       let [altasData, bajasData, cambiosData] = await Promise.all([
-        processFileGroup(categorizeFiles.altasFiles, headers_lss_timt),
-        processFileGroup(categorizeFiles.bajasFiles, headers_lss_timt),
-        processFileGroup(categorizeFiles.cambiosFiles, headers_lss_timt)
+        processFileGroup(categorizeFiles.altasFiles, headers_lss_timt, AltasTIMTDto),
+        processFileGroup(categorizeFiles.bajasFiles, headers_lss_timt, BajasTIMTDto),
+        processFileGroup(categorizeFiles.cambiosFiles, headers_lss_timt, CambiosTIMTDto)
       ])
       hasAltasErrors = altasData.some(result => result.errors && result.errors.length > 0)
       hasBajasErrors = bajasData.some(result => result.errors && result.errors.length > 0)
@@ -83,8 +92,8 @@ export class LSSTIMTService {
         })
 
         const { datosValidos: bajasValidas = [], datosDuplicados: bajasInactivas = [] } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
-       
-        const { cambiosValidos = [], sinCambios = []} = validateChangeInRecord(lastVersionRecords, cambiosFinal, keyField)
+
+        const { cambiosValidos = [], sinCambios = [] } = validateChangeInRecord(lastVersionRecords, cambiosFinal, keyField)
 
         const { datosValidos: altasValidas = [], datosDuplicados: altasDuplicadas = [] } = checkDuplicates(lastVersionRecords, altasFinal, keyField)
 
@@ -93,23 +102,22 @@ export class LSSTIMTService {
         const newRecords = [...finalRecords, ...altasValidas]
 
         const newRecordsCount = lastVersionRecords.length + altasValidas.length - bajasValidas.length
-        console.log( bajasValidas)
-return {
-  success: true,
-  lastVersion,
-  lastVersionRecords,
-  newVersion,
-  newRecords,
-  newRecordsCount,
-  altasValidas: altasValidas ?? [],
-  altasDuplicadas: altasDuplicadas ?? [],
-  bajasValidas: bajasValidas ?? [],
-  bajasInactivas: bajasInactivas ?? [],
-  cambiosValidos: cambiosValidos ?? [],
-  sinCambios: sinCambios ?? []
-}
 
-        
+        return {
+          success: true,
+          lastVersion,
+          lastVersionRecords,
+          newVersion,
+          newRecords,
+          newRecordsCount,
+          altasValidas: altasValidas ?? [],
+          altasDuplicadas: altasDuplicadas ?? [],
+          bajasValidas: bajasValidas ?? [],
+          bajasInactivas: bajasInactivas ?? [],
+          cambiosValidos: cambiosValidos ?? [],
+          sinCambios: sinCambios ?? []
+        }
+
       }
     } catch (error) {
       console.log('Error al validar archivos:', error)
@@ -130,12 +138,36 @@ return {
     }
   }
 
-  public async createNewVersion(altas, bajas, cambios,userId,version): Promise<any> {
-    if(!altas && !bajas && !cambios){
+  public async createNewVersion(altas, bajas, cambios, userId, version): Promise<any> {
+    if (!altas && !bajas && !cambios) {
       throw new Error('No hay información para una nueva versión.')
     }
-    
-    console.log(userId,version)
-    // return await this.repo.bulkCreate(records)
+    return await connexion.transaction(async (t) => {
+      const updatedRecords = [...altas, ...cambios].map(r => ({
+        ...r,
+        active: true
+      }))
+      const bajasRecords = bajas.map(r => ({
+        ...r,
+        active: false
+      }))
+      const allRecords = [...updatedRecords, ...bajasRecords].map(r => ({
+        ...r,
+        version
+      }))
+      await this.repo.bulkCreate(allRecords)
+
+      await versionHistoryRepository.create(
+        {
+          listName: 'LSS-TIMT',
+          version,
+          operationType: 'CREATION' as OperationType,
+          userId
+        },
+        { transaction: t }
+      )
+      return { success: true }
+    }
+    )
   }
 }

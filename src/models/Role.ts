@@ -9,9 +9,9 @@ export class Role extends Model {
 Role.init(
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
       primaryKey: true,
+      autoIncrement: true,
     },
     name: {
       type: DataTypes.STRING(128),
@@ -25,3 +25,5 @@ Role.init(
     timestamps: false,
   }
 )
+
+export default Role
