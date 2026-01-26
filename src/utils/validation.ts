@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import { toInt } from "validator"
-import { CATEGORIES, HeaderValidationResult, SamsSitpAttributes } from "../types"
+import { HeaderValidationResult } from "../types"
 
 
 export function sonEquivalentesNum(dec: number, hex: string): boolean {
@@ -268,35 +268,4 @@ export function validateBlacklistingDate(date: string): boolean {
   }
 
   return true
-}
-
-export function categorizeByOperator<T extends SamsSitpAttributes>(
-  data: T[]
-) {
-  const result: Record<string, T[]> = {}
-
-  CATEGORIES.forEach(cat => {
-    result[cat.key] = []
-  })
-
-  result['Otros'] = []
-
-  for (const item of data) {
-    const value = item.line_operator_or_recipient ?? ''
-    let matched = false
-
-    for (const category of CATEGORIES) {
-      if (category.regex.test(value)) {
-        result[category.key].push(item)
-        matched = true
-        break
-      }
-    }
-
-    if (!matched) {
-      result['Otros'].push(item)
-    }
-  }
-
-  return result
 }

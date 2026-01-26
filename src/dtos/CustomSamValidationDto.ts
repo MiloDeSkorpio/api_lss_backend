@@ -44,9 +44,9 @@ export class CustomSamValidationDto {
   @Transform(({ value }) => {
     if (typeof value !== 'string') return value
     return value
-      .replaceAll('\uFEFF', '')
-      .replaceAll('\u00A0', ' ')
-      .replaceAll(/[\x00-\x1F\x7F]/g, 'v00.00.00')
+      .replace(/\uFEFF/g, '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[\x00-\x1F\x7F]/g, 'v00.00.00')
       .trim()
   })
   @Matches(/^v\d{2}\.\d{2}\.\d{2}$/, {
