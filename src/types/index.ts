@@ -126,7 +126,7 @@ export const ORG_MAPPING: { [key: string]: keyof typeof catByOrg } = {
   '_64_': 'sem'
 }
 
-export const listNames = ['SAMS','WHITELIST', 'BLACKLIST', 'WHITELIST_CV', 'LSS-TCSM','LSS-TIMT'] as const
+export const listNames = ['SAMS', 'WHITELIST', 'BLACKLIST', 'WHITELIST_CV', 'LSS-TCSM', 'LSS-TIMT'] as const
 export const operationTypes = ['CREATION', 'ROLLBACK'] as const
 
 export type ListName = typeof listNames[number]
@@ -162,26 +162,36 @@ export interface UserAttributes {
 }
 
 export interface SamsSitpAttributes {
-production_log_file: string
-serial_number_decimal: bigint
-serial_number_hexadecimal: string
-configuration: string
-reference: string
-line_operator_or_recipient: string
-lock_index: string
-production_date: string
-version?: number
+  production_log_file: string
+  serial_number_decimal: bigint
+  serial_number_hexadecimal: string
+  configuration: string
+  reference: string
+  line_operator_or_recipient: string
+  lock_index: string
+  production_date: string
+  version?: number
+}
+export interface WhiteListAttributes {
+  SERIAL_DEC: number
+  SERIAL_HEX: string
+  CONFIG: string
+  OPERATOR: string
+  LOCATION_ID: string
+  ESTACION: string
+  VERSION: number
+  ESTADO: string
 }
 
 export const headers_sams = [
-    'production_log_file',
-    'serial_number_decimal',
-    'serial_number_hexadecimal',
-    'configuration',
-    'reference',
-    'line_operator_or_recipient',
-    'lock_index',
-    'production_date',
+  'production_log_file',
+  'serial_number_decimal',
+  'serial_number_hexadecimal',
+  'configuration',
+  'reference',
+  'line_operator_or_recipient',
+  'lock_index',
+  'production_date',
 ]
 
 export interface CategoryConfig {
@@ -198,4 +208,12 @@ export const CATEGORIES: CategoryConfig[] = [
   { key: 'Metrobus', label: 'Metrobus', regex: /MB Line/i },
   { key: 'Edomex', label: 'Edomex', regex: /Mexicable|Mexibus/i },
   { key: 'Spirtech', label: 'Spirtech', regex: /Spirtech/i }
+]
+
+export const ProviderCodes: CategoryConfig[] = [
+  { key: 'Metrobus', label: 'Metrobus', regex: /01|02|03|04|05|06|07/i },
+  { key: 'STE', label: 'STE', regex: /5A|3C/i },
+  { key: 'ORT', label: 'ORT', regex: /15/i },
+  { key: 'STC', label: 'STC', regex: /32/i },
+  { key: 'RTP', label: 'RTP', regex: /46/i },
 ]

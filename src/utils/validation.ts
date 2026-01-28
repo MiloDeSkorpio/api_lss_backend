@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import { toInt } from "validator"
-import { CATEGORIES, HeaderValidationResult, SamsSitpAttributes } from "../types"
+import { CATEGORIES, HeaderValidationResult, ProviderCodes, SamsSitpAttributes, WhiteListAttributes } from "../types"
 
 
 export function sonEquivalentesNum(dec: number, hex: string): boolean {
@@ -286,6 +286,37 @@ export function categorizeByOperator<T extends SamsSitpAttributes>(
     let matched = false
 
     for (const category of CATEGORIES) {
+      if (category.regex.test(value)) {
+        result[category.key].push(item)
+        matched = true
+        break
+      }
+    }
+
+    if (!matched) {
+      result['Otros'].push(item)
+    }
+  }
+
+  return result
+}
+
+export function categorizeByProvider<T extends WhiteListAttributes>(
+  data: T[]
+) {
+  const result: Record<string, T[]> = {}
+
+  ProviderCodes.forEach(cat => {
+    result[cat.key] = []
+  })
+
+  result['Otros'] = []
+
+  for (const item of data) {
+    const value = item.OPERATOR ?? ''
+    let matched = false
+
+    for (const category of ProviderCodes) {
       if (category.regex.test(value)) {
         result[category.key].push(item)
         matched = true

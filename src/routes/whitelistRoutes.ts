@@ -3,6 +3,7 @@ import { WhitelistController } from "../controllers/WhitelistController"
 import { uploadCSV, uploadCSVs } from "../middleware/uploadFiles";
 import { body, param } from "express-validator";
 import { handleInputErrors, multerErrorHandler } from "../middleware";
+import { authMiddleware } from "../middleware/auth";
 
 
 const router = Router()
@@ -97,6 +98,18 @@ router.post('/restore-version',
   body('oldVersion').notEmpty().withMessage('Es necesaria la Version'),
   handleInputErrors,
   WhitelistController.restoreWhitelistVersion
+)
+
+
+// refactor new routes
+router.get('/get-summary',
+  authMiddleware,
+  WhitelistController.getSummary
+)
+
+router.get('/get-summary-cv',
+  authMiddleware,
+  WhitelistController.getSummaryCV
 )
 
 export default router

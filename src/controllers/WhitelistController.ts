@@ -10,6 +10,7 @@ import { searchByHexID } from '../utils/buscador'
 import { Op } from 'sequelize'
 import { validateChangeInRecord, validateHeaders } from '../utils/validation'
 import { MulterRequest, PROVIDER_CODES, REQUIRED_HEADERS, ValidationErrorItem } from '../types'
+import { WhiteListService } from '../services/WhiteListService'
 
 const validateFiles = (model) => async (req: MulterRequest, res: Response) => {
   try {
@@ -380,4 +381,31 @@ export class WhitelistController {
   // Restore version
   static restoreWhitelistCVVersion = restoreWhitelistVersion(WhiteListCV)
   static restoreWhitelistVersion = restoreWhitelistVersion(WhiteList)
+
+  // refactor 
+  private static readonly whiteListService = new WhiteListService()
+
+  static readonly getSummary = async(req: Request, res: Response) => {
+    try {
+      const result = await this.whiteListService.getSummaryLastVersion()
+      if(result.success){
+      return res.status(200).json(result)
+      }
+    } catch (error) {
+      console.log('Error al obtener resumen:', error)
+      return res.status(500).json({success: false, message: error.message})
+    }
+  }
+  static readonly getSummaryCV = async(req: Request, res: Response) => {
+    try {
+      const result = await this.whiteListService.getSummaryLastVersionCV()
+      if(result.success){
+      return res.status(200).json(result)
+      }
+    } catch (error) {
+      console.log('Error al obtener resumen:', error)
+      return res.status(500).json({success: false, message: error.message})
+    }
+  }
+
 }
