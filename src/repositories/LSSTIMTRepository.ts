@@ -14,7 +14,7 @@ export class LSSTIMTRepository extends BaseRepository<LSS_TIMT> {
     return super.findAll({ version })
   }
   public async findAllInactiveRecords() {
-    return super.findAll({ status: 'INACTIVE' })
+    return super.findAll({ status: false })
   }
   public async getLastVersionRecords(): Promise<LSS_TIMT[]> {
     const maxVersion = await this.lastVersion()
@@ -41,6 +41,15 @@ export class LSSTIMTRepository extends BaseRepository<LSS_TIMT> {
   })
 
   return count > 0
+}
+
+public async getBySerialHex(hexId: string): Promise<LSS_TIMT | null> {
+  return await LSS_TIMT.findOne({
+    where: {
+      serial_hex: hexId
+    },
+    raw: true
+  })   
 }
 
 }

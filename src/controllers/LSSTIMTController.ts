@@ -54,4 +54,17 @@ export class LSSTIMTController {
       return res.status(500).json({ success: false, message: error.message })
     }
   }
+  static readonly getSamBySerial = async (req: Request, res: Response) => {
+    const { hexId } = req.params
+    try {
+      const result = await LSSTIMTController.service.getBySerialHex(hexId)
+      if (result) {
+        return res.status(200).json(result)
+      }
+      return res.status(404).json({ message: 'Registro no encontrado' })
+    } catch (error) {
+      console.log('Error al obtener registro por serial hex:', error)
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
 }

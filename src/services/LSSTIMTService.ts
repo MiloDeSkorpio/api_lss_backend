@@ -170,4 +170,8 @@ export class LSSTIMTService {
     }
     )
   }
+  public async getBySerialHex(hexId: string): Promise<LssTIMTProps | null> {
+    return await this.repo.getBySerialHex(hexId)
+  }
+  
 }

@@ -36,5 +36,8 @@ router.get('/get-summary-timt',
   LSSTIMTController.getSummary
 )
 
-
+router.get('/find-timt/:hexId',
+  authMiddleware,
+  LSSTIMTController.getSamBySerial
+)
 export default router
