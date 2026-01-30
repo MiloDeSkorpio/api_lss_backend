@@ -9,6 +9,16 @@ import { CategorizedBLFiles, CategorizedFiles, ValidationErrorItem, categorized,
 import { plainToInstance } from 'class-transformer'
 import { validate } from 'class-validator'
 
+const safeUnlink = async (filePath: string): Promise<void> => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+  } catch (error) {
+    console.error(`Error deleting file ${filePath}:`, error)
+  }
+}
+
 export const validateFileName = (filename: string): boolean => {
   try {
     const patterns = {
@@ -81,12 +91,12 @@ export async function processSingleFile(
   file: Express.Multer.File,
   REQUIRED_HEADERS: string[],
   dtoClass?: any, // Make DTO class optional for backward compatibility
-): Promise<{ fileName: string ;validData: any[]; errors: ValidationErrorItem[] }> {
+): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
     const errorMessages: ValidationErrorItem[] = []
     const fileValidData: any[] = []
     let headersValid = true
-    const rows: any[] = [] 
+    const rows: any[] = []
 
     fs.createReadStream(file.path)
       .pipe(stripBomStream())
@@ -112,7 +122,7 @@ export async function processSingleFile(
         if (headersValid) {
           if (dtoClass) {
             for (const [index, row] of rows.entries()) {
-              const lineNumber = index + 2 
+              const lineNumber = index + 2
               const dtoInstance = plainToInstance(dtoClass, row, { enableImplicitConversion: true })
               const validationErrors = await validate(dtoInstance)
 
@@ -130,10 +140,10 @@ export async function processSingleFile(
             }
           } else {
             // If no DTO is provided, just return the raw data (old behavior)
-             fileValidData.push(...rows)
+            fileValidData.push(...rows)
           }
         }
-        
+
         fs.unlinkSync(file.path)
         resolve({
           fileName: file.originalname,
@@ -151,7 +161,7 @@ export async function processSingleFile(
 export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], dtoClass?: any,) => {
   const processingPromises = files.map(async (file) => {
     try {
-      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS,dtoClass)
+      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS, dtoClass)
       return { fileName, errors, validData }
     } catch (error) {
       return {
@@ -168,54 +178,72 @@ export async function processSingleBLFile(
   reqHeaders: string[]
 ): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
   return new Promise(async (resolve, reject) => {
-    let lineNumber = 0
+
     const errorMessages: ValidationErrorItem[] = []
     const fileValidData: any[] = []
-    let headersValid = true
 
-    if (validateFileName(file.originalname)) {
-      fs.createReadStream(file.path)
-        .pipe(stripBomStream())
-        .pipe(csv())
-        .on('headers', (headers: string[]) => {
-          const { missing, extra } = validateHeaders(headers, reqHeaders)
-          if (missing.length > 0) {
-            headersValid = false
-            errorMessages.push({
-              message: `Faltan columnas: ${missing.join(', ')}`,
-            })
-          } else if (extra.length > 0) {
-            headersValid = false
-            errorMessages.push({
-              message: `Sobran columnas: ${extra.join(', ')}`,
-            })
-          }
-        })
-        .on('data', (row) => {
-          lineNumber++
-          if (headersValid) {
-            validateRow(
-              row,
-              lineNumber,
-              fileValidData,
-              errorMessages,
-              file.originalname,
-            )
-          }
-        })
-        .on('end', () => {
-          fs.unlinkSync(file.path)
-          resolve({
-            fileName: file.originalname,
-            validData: fileValidData,
-            errors: errorMessages
-          })
-        })
-        .on('error', (error) => {
-          fs.unlinkSync(file.path)
-          reject(error)
-        })
+
+    if (!validateFileName(file.originalname)) {
+      await safeUnlink(file.path)
+      return resolve({
+        fileName: file.originalname,
+        validData: [],
+        errors: [{ message: 'Nombre de archivo inválido' }]
+      })
     }
+
+    let headersValid = true
+    let lineNumber = 0
+
+    const stream = fs.createReadStream(file.path)
+
+    stream
+      .pipe(stripBomStream())
+      .pipe(csv())
+      .on('headers', (headers: string[]) => {
+        const { missing, extra } = validateHeaders(headers, reqHeaders)
+
+        if (missing.length > 0) {
+          headersValid = false
+          errorMessages.push({
+            message: `Faltan columnas: ${missing.join(', ')}`,
+          })
+        }
+
+        if (extra.length > 0) {
+          headersValid = false
+          errorMessages.push({
+            message: `Sobran columnas: ${extra.join(', ')}`,
+          })
+        }
+      })
+      .on('data', (row) => {
+        lineNumber++
+
+        if (!headersValid) return
+
+        validateRow(
+          row,
+          lineNumber,
+          fileValidData,
+          errorMessages,
+          file.originalname,
+        )
+      })
+      .on('end', async () => {
+        await safeUnlink(file.path)
+
+        resolve({
+          fileName: file.originalname,
+          validData: fileValidData,
+          errors: errorMessages
+        })
+      })
+      .on('error', async (error) => {
+        await safeUnlink(file.path)
+        reject(error)
+      })
+
 
   })
 }
@@ -333,7 +361,7 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
       })
       const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
 
-      const { cambiosValidos, sinCambios } = validateChangeInRecord(currentVersionRecords, cambiosFinal,keyField)
+      const { cambiosValidos, sinCambios } = validateChangeInRecord(currentVersionRecords, cambiosFinal, keyField)
 
       const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } = checkDuplicates(currentVersionRecords, altasFinal, keyField)
 
