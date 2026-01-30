@@ -147,7 +147,7 @@ export interface UserAttributes {
   name: string
   email: string
   password: string
-  roleId: string
+  roleId: number
   verification_code: string
   verification_expires: Date
   verification_last_sent: Date
@@ -210,6 +210,7 @@ export const CATEGORIES: CategoryConfig[] = [
   { key: 'Spirtech', label: 'Spirtech', regex: /Spirtech/i }
 ]
 
+
 export const ProviderCodes: CategoryConfig[] = [
   { key: 'Metrobus', label: 'Metrobus', regex: /01|02|03|04|05|06|07/i },
   { key: 'STE', label: 'STE', regex: /5A|3C/i },
@@ -217,3 +218,21 @@ export const ProviderCodes: CategoryConfig[] = [
   { key: 'STC', label: 'STC', regex: /32/i },
   { key: 'RTP', label: 'RTP', regex: /46/i },
 ]
+
+export const headers_lss_tcsm = [
+    'serial_hex',
+    'location_zone',
+]
+export const headers_lss_timt = [
+    'serial_hex',
+    'location_id',
+    'dias',
+    'horario',
+]
+export interface LssTIMTProps { 
+    serial_hex: string
+    location_id: string
+    dias: string
+    horario: string
+}
+

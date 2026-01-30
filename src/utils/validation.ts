@@ -1,8 +1,16 @@
 import { createHash } from "crypto"
 import { toInt } from "validator"
 import { CATEGORIES, HeaderValidationResult, ProviderCodes, SamsSitpAttributes, WhiteListAttributes } from "../types"
+import SamsSitp from "../models/SamsSitp"
 
-
+import {
+  registerDecorator,
+  ValidationOptions,
+  ValidationArguments,
+  ValidatorConstraint,
+  ValidatorConstraintInterface
+} from 'class-validator'
+import lsstimtRepository from "../repositories/LSSTIMTRepository"
 export function sonEquivalentesNum(dec: number, hex: string): boolean {
   const hexAsDec = parseInt(hex, 16)
   if (isNaN(hexAsDec)) throw new Error(`Hex inválido: ${hex}`)
@@ -28,17 +36,21 @@ export function eliminarRegistrosLN<T extends { card_serial_number: string }>(
     )
   )
 }
-export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]) {
-  const sinCambios = []
-  const cambiosValidos = []
+export function validateChangeInRecord(currentRecords: any[], cambiosData: any[],keyField: string) {
+  const sinCambios: any[] = []
+  const cambiosValidos: any[] = []
   const camposExcluidos = ['ESTADO', 'VERSION']
 
   const normalizeVal = (v: any) =>
     v === null || v === undefined ? '' : String(v).trim()
 
+  if (!Array.isArray(cambiosData) || cambiosData.length === 0) {
+    return { sinCambios: [], cambiosValidos: [] }
+  }
+
   cambiosData.forEach(registroCambio => {
     const registroExistente = currentRecords.find(
-      r => normalizeVal(r.SERIAL_HEX) === normalizeVal(registroCambio.SERIAL_HEX)
+      r => normalizeVal(r[keyField]) === normalizeVal(registroCambio[keyField])
     )
 
     if (!registroExistente) {
@@ -60,6 +72,7 @@ export function validateChangeInRecord(currentRecords: any[], cambiosData: any[]
 
   return { sinCambios, cambiosValidos }
 }
+
 export function verifyIfExistRecord(arrayCompare: any[], arrayData: any[], keyField: string) {
   const notFoundRecords = []
   const datosExistentes = arrayData.filter(row => {
@@ -74,24 +87,33 @@ export function verifyIfExistRecord(arrayCompare: any[], arrayData: any[], keyFi
   })
   return { datosExistentes, notFoundRecords }
 }
-export function checkDuplicates(arrayCompare: any[], arrayData: any[], keyField: string) {
+export function checkDuplicates(
+  arrayCompare: any[],
+  arrayData: any[],
+  keyField: string
+) {
+  const datosDuplicados: any[] = []
 
-  const datosDuplicados = []
-  // Filtrar las bajas que están en arrayInvalidData
+  if (!Array.isArray(arrayData) || arrayData.length === 0) {
+    return { datosValidos: [], datosDuplicados: [] }
+  }
+
   const datosValidos = arrayData.filter(row => {
-    const esDuplicado = arrayCompare.some(invalidRow =>
-      invalidRow[keyField] === row[keyField] // Comparación por ID (ajusta según tu necesidad)
+    const esDuplicado = arrayCompare.some(compareRow =>
+      compareRow[keyField] === row[keyField]
     )
 
     if (esDuplicado) {
       datosDuplicados.push(row)
       return false
     }
+
     return true
   })
 
   return { datosValidos, datosDuplicados }
 }
+
 export function validateHeaders(headers: string[], required: string[]): HeaderValidationResult {
   const missing = required.filter(h => !headers.includes(h));
   const extra = headers.filter(h => !required.includes(h));
@@ -217,10 +239,8 @@ export function isSamValid(samsp_id_hex) {
     return true
   }
 }
-export function isSamInInventory(samsValid: any[], PROVIDER_CODES: any[], SERIAL_HEX: string, OPERATOR: string) {
-  return samsValid.some(sam =>
-    sam.sam_id_hex === SERIAL_HEX && PROVIDER_CODES.includes(OPERATOR)
-  )
+export function isSamInInventory( serial_hex: string) {
+  return SamsSitp.findOne({where: {serial_number_hexadecimal : `$${serial_hex}` }})
 }
 export function isCardInStolenPack(stolenCards: any[], card_serial_number: string, estado: string) {
   return stolenCards.some(card =>
@@ -301,6 +321,7 @@ export function categorizeByOperator<T extends SamsSitpAttributes>(
   return result
 }
 
+
 export function categorizeByProvider<T extends WhiteListAttributes>(
   data: T[]
 ) {
@@ -330,4 +351,204 @@ export function categorizeByProvider<T extends WhiteListAttributes>(
   }
 
   return result
+}
+
+export function locationZoneValidation(locationZone: unknown) {
+  if (locationZone === null || locationZone === undefined) {
+    throw new Error('locationZone es requerido')
+  }
+
+  const value = String(locationZone).trim()
+
+  if (!/^[01]$/.test(value)) {
+    throw new Error(
+      `locationZone inválido (${locationZone}). Solo se permite 0 o 1`
+    )
+  }
+}
+
+export function IsWeekBitmap(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isWeekBitmap',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any) {
+          return (
+            Number.isInteger(value) &&
+            value >= 0 &&
+            value <= 127
+          )
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `Bitmap inválido (${args.value}). Debe estar entre 0 y 127`
+        }
+      }
+    })
+  }
+}
+
+
+// validators/is-time-range.validator.ts
+
+export function IsTimeRange(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isTimeRange',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: string) {
+          if (typeof value !== 'string') return false
+
+          const regex =
+            /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/
+          const match = value.match(regex)
+          if (!match) return false
+
+          const [, sh, sm, eh, em] = match.map(Number)
+          return sh * 60 + sm < eh * 60 + em
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `Rango horario inválido (${args.value}). Use hh:mm-hh:mm`
+        }
+      }
+    })
+  }
+}
+
+export function SerialNotInLastVersion(
+  validationOptions?: ValidationOptions
+) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'serialNotInLastVersion',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        async validate(serialHex: string) {
+          if (!serialHex) return false
+
+          const lastVersion =
+            await lsstimtRepository.lastVersion()
+
+          if (!lastVersion) return true
+
+          const exists =
+            await lsstimtRepository.existsInVersion(
+              serialHex,
+              lastVersion
+            )
+
+          return !exists
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `serial_hex ${args.value} ya existe en la última versión`
+        }
+      }
+    })
+  }
+}
+
+export function SerialMustBeActive(validationOptions?: ValidationOptions) {
+  return function(object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'serialMustBeActive',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        async validate(serialHex: string) {
+          if (!serialHex) return false
+
+          const lastVersion = await lsstimtRepository.lastVersion()
+          if (!lastVersion) return false // No hay versión → no se puede dar de baja
+
+          const exists = await lsstimtRepository.existsInVersion(serialHex, lastVersion)
+          return exists // True si existe activo
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `El serial_hex ${args.value} no está activo en la última versión`
+        }
+      }
+    })
+  }
+}
+export function HasAtLeastOne(properties: string[], validationOptions?: ValidationOptions) {
+  return function(object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'hasAtLeastOne',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(_: any, args: ValidationArguments) {
+          const obj = args.object as Record<string, any>
+          return properties.some(p => obj[p] !== undefined)
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `Debe cambiar al menos uno de los campos: ${properties.join(', ')}`
+        }
+      }
+    })
+  }
+}
+export function HasChangesForLocationDiasHorario(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'hasChangesForLocationDiasHorario',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        async validate(_: any, args: ValidationArguments): Promise<boolean> {
+          const obj = args.object as Record<string, any>;
+
+          // Obtener última versión
+          const lastVersion = await lsstimtRepository.lastVersion();
+          if (!lastVersion) return true; // no hay versión previa → válido
+
+          // Buscar registro actual
+          const records = await lsstimtRepository.findAllByVersion(lastVersion);
+          const current = records.find(r => r.serial_hex === obj.serial_hex);
+          if (!current) return false; // no existe → inválido
+
+          // Normalizar y comparar campos
+          const locationNew = String(obj.location_id ?? '').trim();
+          const locationCurrent = String(current.location_id ?? '').trim();
+
+          const diasNew = Number(obj.dias ?? 0);
+          const diasCurrent = Number(current.dias ?? 0);
+
+          const horarioNew = String(obj.horario ?? '').replace(/\s/g, '').toLowerCase();
+          const horarioCurrent = String(current.horario ?? '').replace(/\s/g, '').toLowerCase();
+
+          // Validar si hay al menos un cambio
+          return locationNew !== locationCurrent || diasNew !== diasCurrent || horarioNew !== horarioCurrent;
+        },
+        defaultMessage(args: ValidationArguments) {
+          return 'Debe modificar al menos location_id, dias o horario respecto a la versión actual';
+        }
+      }
+    });
+  };
+}
+
+export function validateHex6(value: string) {
+  if (typeof value !== 'string') {
+    throw new Error('El valor hexadecimal debe ser una cadena de texto')
+  }
+
+  const hexRegex = /^[0-9A-Fa-f]{6}$/
+
+  if (!hexRegex.test(value)) {
+    throw new Error(
+      `Valor hexadecimal inválido (${value}). Debe ser base 16 y tener exactamente 6 caracteres`
+    )
+  }
+
 }

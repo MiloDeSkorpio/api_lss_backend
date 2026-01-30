@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'node:fs'
 import csv from 'csv-parser'
 import stripBomStream from "strip-bom-stream"
 import StolenCards from '../models/StolenCards'
@@ -6,6 +6,8 @@ import { checkDuplicates, eliminarRegistros, validateChangeInRecord, validateHea
 import { validateRow } from '../middleware/validationRow'
 import { getHighestVersionRecords, getInvalidRecords, getMaxVersion, getResumeOfValidationBL, getStolenCards, getTotalRecords } from './versions'
 import { CategorizedBLFiles, CategorizedFiles, ValidationErrorItem, categorized, categorizedBl, headers_downs_blacklist, headers_ups_blacklist } from '../types'
+import { plainToInstance } from 'class-transformer'
+import { validate } from 'class-validator'
 
 export const validateFileName = (filename: string): boolean => {
   try {
@@ -15,7 +17,9 @@ export const validateFileName = (filename: string): boolean => {
       listablanca_cv: /^listablanca_sams_cv_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{12}\.csv$/,
       inventario: /^inventario_sams_\d{12}\.csv$/,
       sams: /^buscar_sams.*\.csv$/,
-      cards: /^buscar_cards.*\.csv$/
+      cards: /^buscar_cards.*\.csv$/,
+      lssTCSM: /^listaseguridadchalco_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/,
+      lssTIMT: /^listaseguridadtimt_sams_(altas|bajas|cambios)_[0-9A-Fa-f]{2}_\d{14}\.csv$/
     }
 
     const fileType = Object.entries(patterns).find(([, regex]) =>
@@ -73,80 +77,6 @@ export const processFileBLGroup = async (files: Express.Multer.File[]) => {
   // Esperar a que todos los archivos se procesen
   return await Promise.all(processingPromises)
 }
-export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], PROVIDER_CODES: string[]) => {
-  const processingPromises = files.map(async (file) => {
-    try {
-      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS)
-      return { fileName, errors, validData }
-    } catch (error) {
-      return {
-        fileName: file.originalname,
-        errors: error,
-      }
-    }
-  })
-  // Esperar a que todos los archivos se procesen
-  return await Promise.all(processingPromises)
-}
-export async function processSingleBLFile(
-  file: Express.Multer.File,
-  reqHeaders: string[]
-): Promise<{ fileName: string; validData: any[] ;errors: ValidationErrorItem[] }> {
-  return new Promise(async (resolve, reject) => {
-    let lineNumber = 0
-    const errorMessages: ValidationErrorItem[] = []
-    const fileValidData: any[] = []
-    let headersValid = true
-
-    if (validateFileName(file.originalname)) {
-      fs.createReadStream(file.path)
-        .pipe(stripBomStream())
-        .pipe(csv())
-        .on('headers', (headers: string[]) => {
-          const { missing, extra } = validateHeaders(headers, reqHeaders)
-          if (missing.length > 0) {
-            headersValid = false
-            errorMessages.push({
-              message: `Faltan columnas: ${missing.join(', ')}`,
-            })
-          } else if (extra.length > 0) {
-            headersValid = false
-            errorMessages.push({
-              message: `Sobran columnas: ${extra.join(', ')}`,
-            })
-          }
-        })
-        .on('data', (row) => {
-          lineNumber++
-          if (headersValid) {
-            validateRow(
-              row,
-              lineNumber,
-              fileValidData,
-              errorMessages,
-              file.originalname,
-            )
-          }
-        })
-        .on('end', () => {
-          fs.unlinkSync(file.path)
-          resolve({
-            fileName: file.originalname,
-            validData: fileValidData,
-            errors: errorMessages
-          })
-        })
-        .on('error', (error) => {
-          fs.unlinkSync(file.path)
-          reject(error)
-        })
-    }
-
-  })
-}
-import { plainToInstance } from 'class-transformer'
-import { validate } from 'class-validator'
-
 export async function processSingleFile(
   file: Express.Multer.File,
   REQUIRED_HEADERS: string[],
@@ -217,7 +147,80 @@ export async function processSingleFile(
       })
   })
 }
-// ... (rest of the file)
+
+export const processFileGroup = async (files: Express.Multer.File[], REQUIRED_HEADERS: string[], dtoClass?: any,) => {
+  const processingPromises = files.map(async (file) => {
+    try {
+      const { fileName, errors, validData } = await processSingleFile(file, REQUIRED_HEADERS,dtoClass)
+      return { fileName, errors, validData }
+    } catch (error) {
+      return {
+        fileName: file.originalname,
+        errors: error,
+      }
+    }
+  })
+  // Esperar a que todos los archivos se procesen
+  return await Promise.all(processingPromises)
+}
+export async function processSingleBLFile(
+  file: Express.Multer.File,
+  reqHeaders: string[]
+): Promise<{ fileName: string; validData: any[]; errors: ValidationErrorItem[] }> {
+  return new Promise(async (resolve, reject) => {
+    let lineNumber = 0
+    const errorMessages: ValidationErrorItem[] = []
+    const fileValidData: any[] = []
+    let headersValid = true
+
+    if (validateFileName(file.originalname)) {
+      fs.createReadStream(file.path)
+        .pipe(stripBomStream())
+        .pipe(csv())
+        .on('headers', (headers: string[]) => {
+          const { missing, extra } = validateHeaders(headers, reqHeaders)
+          if (missing.length > 0) {
+            headersValid = false
+            errorMessages.push({
+              message: `Faltan columnas: ${missing.join(', ')}`,
+            })
+          } else if (extra.length > 0) {
+            headersValid = false
+            errorMessages.push({
+              message: `Sobran columnas: ${extra.join(', ')}`,
+            })
+          }
+        })
+        .on('data', (row) => {
+          lineNumber++
+          if (headersValid) {
+            validateRow(
+              row,
+              lineNumber,
+              fileValidData,
+              errorMessages,
+              file.originalname,
+            )
+          }
+        })
+        .on('end', () => {
+          fs.unlinkSync(file.path)
+          resolve({
+            fileName: file.originalname,
+            validData: fileValidData,
+            errors: errorMessages
+          })
+        })
+        .on('error', (error) => {
+          fs.unlinkSync(file.path)
+          reject(error)
+        })
+    }
+
+  })
+}
+
+
 export async function validateInfoBLFiles(files, Model) {
   const categorizedBl = categorizeBLFiles(files)
   let hasAltasErrors = false
@@ -281,9 +284,9 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
 
   try {
     let [altasData, bajasData, cambiosData] = await Promise.all([
-      processFileGroup(categorizeFiles.altasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
-      processFileGroup(categorizeFiles.bajasFiles, REQUIRED_HEADERS, PROVIDER_CODES),
-      processFileGroup(categorizeFiles.cambiosFiles, REQUIRED_HEADERS, PROVIDER_CODES)
+      processFileGroup(categorizeFiles.altasFiles, REQUIRED_HEADERS),
+      processFileGroup(categorizeFiles.bajasFiles, REQUIRED_HEADERS),
+      processFileGroup(categorizeFiles.cambiosFiles, REQUIRED_HEADERS)
     ])
     hasAltasErrors = altasData.some(result => result.errors && result.errors.length > 0)
     hasBajasErrors = bajasData.some(result => result.errors && result.errors.length > 0)
@@ -330,7 +333,7 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
       })
       const { datosValidos: bajasValidas, datosDuplicados: bajasInactivas } = checkDuplicates(allInvalidRecords, bajasFinal, keyField)
 
-      const { cambiosValidos, sinCambios } = validateChangeInRecord(currentVersionRecords, cambiosFinal)
+      const { cambiosValidos, sinCambios } = validateChangeInRecord(currentVersionRecords, cambiosFinal,keyField)
 
       const { datosValidos: altasValidas, datosDuplicados: altasDuplicadas } = checkDuplicates(currentVersionRecords, altasFinal, keyField)
 
@@ -360,9 +363,9 @@ export async function validateInfoFiles(files, Model, REQUIRED_HEADERS: string[]
 }
 export async function validateSearchFile(file, Model, REQ_HEADER: string[]) {
   try {
-    const { errors, validData } = await processSingleFile(file, REQ_HEADER )
+    const { errors, validData } = await processSingleFile(file, REQ_HEADER)
     return { errors, validData }
   } catch (error) {
-    console.log('Error al validar',error)
+    console.log('Error al validar', error)
   }
 }

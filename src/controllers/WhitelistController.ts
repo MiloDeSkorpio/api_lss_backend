@@ -255,7 +255,7 @@ const compareVersions = (model, baseOptions: any) => async (req: Request, res: R
       return res.status(404).json({ error: "No se encontraron datos para las versiones especificadas" })
     }
 
-    const { cambiosValidos } = validateChangeInRecord(oldData, currentData)
+    const { cambiosValidos } = validateChangeInRecord(oldData, currentData, 'SERIAL_HEX')
     const idsPrev = new Set(oldData.map(r => r.SERIAL_HEX))
     const idsCurr = new Set(currentData.map(r => r.SERIAL_HEX))
     const bajas = oldData.filter(r => !idsCurr.has(r.SERIAL_HEX))
@@ -291,7 +291,7 @@ const getResume = (model) => async (req: Request, res: Response) => {
   if (previusVersion < 1) {
     altasDataV = currentVersionRecords.length
   } else {
-    const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords)
+    const { cambiosValidos } = validateChangeInRecord(currentVersionRecords, previusVersionRecords, 'SERIAL_HEX')
     const idsPrev = new Set(previusVersionRecords.map(r => r.SERIAL_HEX))
     const idsCurr = new Set(currentVersionRecords.map(r => r.SERIAL_HEX))
     const bajas = previusVersionRecords.filter(r => !idsCurr.has(r.SERIAL_HEX))

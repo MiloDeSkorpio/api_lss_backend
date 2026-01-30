@@ -1,6 +1,7 @@
 import { priorityValues, PROVIDER_CODES, ValidationErrorItem } from "../types";
+import { assertSamExistsInInventory } from "../utils/buscador";
 import { validateFileName } from "../utils/files";
-import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
+import { genSemoviId, isCardInStolenPack, isCardTypeValid, isSamInInventory, isSamValid, locationZoneValidation, normalizeText, validarHexCard, validarSerialHex, validateBlacklistingDate, validateHex6, validateHexValuesToDec, validateLocationId, validatePriority, validateProviderCode, validateRequiredFields, validateTypeSam } from "../utils/validation";
 
 let ignoreWl = ['ESTACION']
 let ignoreIn = ['version_parametros', 'lock_index', 'fecha_produccion', 'hora_produccion', 'atr', 'samsp_id_hex', 'samsp_version_parametros', 'recibido_por', 'documento_soporte1', 'documento_soporte2', 'observaciones']
@@ -12,9 +13,6 @@ export async function validateRow(row: any, lineNumber: number, validData: any[]
   }
   else if (fileName.includes('listanegra')) {
     return validateListaNegra(row, errors, fileName, validData, lineNumber,)
-  }
-  else if (fileName.includes('inventario')) {
-    return validateInventorySams(row, errors, fileName, PROVIDER_CODES, validData)
   }
   else if (fileName.includes('buscar')) {
     return validateSearch(row, errors, fileName, validData,lineNumber)
@@ -109,21 +107,5 @@ async function validateSearch(
     })
   }
 }
-function validateInventorySams(
-  row: any,
-  errors: ValidationErrorItem[],
-  fileName: string,
-  PROVIDER_CODES: string[],
-  validData: any[]
-) {
-  validateRequiredFields(row, ignoreIn)
-  const serialDec = validateHexValuesToDec(row.sam_id_dec, row.sam_id_hex)
-  validateProviderCode(PROVIDER_CODES, row.provider_code)
-  isSamValid(row.samsp_id_hex)
-  const semoviId = genSemoviId(row.sam_id_hex, row.sam_id_dec, row.provider_code)
-  return validData.push({
-    ...row,
-    id_semovi: semoviId,
-    sam_id_dec: serialDec
-  })
-}
+
+

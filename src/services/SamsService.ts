@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import csv from 'csv-parser'
-import { Op } from 'sequelize'
 import stripBomStream from 'strip-bom-stream'
 import { processSingleFile } from '../utils/files'
 import { headers_sams, OperationType } from '../types'
