@@ -67,4 +67,17 @@ export class LSSTIMTController {
       return res.status(500).json({ success: false, message: error.message })
     }
   }
+  static readonly getLssTimtByFile = async (req: MulterRequest, res: Response) => {
+    try {
+      const result = await LSSTIMTController.service.getSAMTimtByHex(req.file)
+      if (result) {
+        return res.status(200).json(result)
+      } else {
+        return res.status(400).json(result)
+      }
+    } catch (error) {
+      console.log('Error al Buscar LSS_TIMT', error)
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
 }

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadCSVs } from "../middleware/uploadFiles";
+import { uploadCSV, uploadCSVs } from "../middleware/uploadFiles";
 import { multerErrorHandler } from "../middleware";
 import { LSSTCSMController } from "../controllers/LSSTCSMController";
 import { LSSTIMTController } from "../controllers/LSSTIMTController";
@@ -39,5 +39,10 @@ router.get('/get-summary-timt',
 router.get('/find-timt/:hexId',
   authMiddleware,
   LSSTIMTController.getSamBySerial
+)
+router.post('/find-by-file-timt',
+  authMiddleware,
+  uploadCSV,
+  LSSTIMTController.getLssTimtByFile
 )
 export default router

@@ -1,3 +1,4 @@
+import { Op } from 'sequelize'
 import { LSS_TIMT } from '../models/LSS-TIMT'
 import { BaseRepository } from './BaseRepository'
 
@@ -51,6 +52,12 @@ public async getBySerialHex(hexId: string): Promise<LSS_TIMT | null> {
     raw: true
   })   
 }
+public async getSamsBySerialHex(serials) {
+    return await  LSS_TIMT.findAll({
+          where: { serial_hex: { [Op.in]: serials } },
+          raw: true
+        })
+  }
 
 }
 

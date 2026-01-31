@@ -11,6 +11,9 @@ import { versionHistoryRepository } from "../repositories/VersionHistoryReposito
 import { CambiosTIMTDto } from "../dtos/lss_timt/CambiosTIMTDto"
 import { AltasTIMTDto } from "../dtos/lss_timt/AltasTIMTDto"
 import { BajasTIMTDto } from "../dtos/lss_timt/BajasTIMTDto"
+import * as fs from "node:fs"
+import stripBomStream from "strip-bom-stream"
+import csv from "csv-parser"
 
 
 
@@ -174,4 +177,68 @@ export class LSSTIMTService {
     return await this.repo.getBySerialHex(hexId)
   }
   
+  public async getSAMTimtByHex(file: Express.Multer.File): Promise<any> {
+    const resultados: any[] = []
+    
+        try {
+    
+          if (!file) {
+            throw new Error('No se proporcionó archivo o la ruta es inválida')
+          }
+    
+          const batchSize = 100
+          let currentBatch = []
+    
+          const processBatch = async (batch) => {
+            const serials = batch.map(row => `$${row.serial_hex}`)
+            const foundRecords = await this.repo.getSamsBySerialHex(serials)
+    
+            foundRecords.forEach(record => {
+               resultados.push({
+                  ...record, 
+                })
+            })
+          }
+          // Procesar el CSV
+          await new Promise((resolve, reject) => {
+            fs.createReadStream(file.path)
+              .pipe(stripBomStream())
+              .pipe(csv())
+              .on('data', async (row) => {
+                currentBatch.push(row)
+                if (currentBatch.length >= batchSize) {
+                  await processBatch(currentBatch)
+                  currentBatch = []
+                }
+    
+              })
+              .on('end', async () => {
+                if (currentBatch.length > 0) {
+                  const resultados = await processBatch(currentBatch)
+    
+                  resolve(resultados)
+                }
+              })
+              .on('error', (error) => {
+                reject(error)
+              })
+          })
+    
+          return resultados
+        } catch (error) {
+          console.error('Error en el procesamiento:', error)
+          return {
+            success: false,
+            error: error.message
+          }
+        } finally {
+          if (file && file.path) {
+            fs.unlink(file.path, (err) => {
+              if (err) console.error('Error al eliminar archivo temporal:', err)
+            })
+          }
+        }
+  }
+
+
 }
